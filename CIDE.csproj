@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <!-- Строго Windows 11 -->
@@ -12,6 +12,7 @@
     <SingleProject>true</SingleProject>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <!-- Оптимизация XAML -->
     <MauiXamlInflator>SourceGen</MauiXamlInflator>
@@ -24,6 +25,7 @@
     <!-- Режим Unpackaged (работает как обычный .exe) -->
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -49,7 +51,11 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.8" />
     <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.60" />
     <PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="10.0.60" />
+    <PackageReference Include="SSH.NET" Version="2025.1.0" />
   </ItemGroup>
 
-
+  <ItemGroup>
+    <Compile Remove="CIDE.Tests\**" />
+    <None Include="CIDE.Tests\**" />
+  </ItemGroup>
 </Project>

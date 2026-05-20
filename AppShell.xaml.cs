@@ -1,5 +1,6 @@
 namespace CIDE;
-internal partial class AppShell : Shell
+
+internal sealed partial class AppShell : Shell
 {
     public AppShell()
     {

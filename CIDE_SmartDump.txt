@@ -1,0 +1,1870 @@
+
+======================================================================
+FILE: Helpers\AnimationHelper.cs
+======================================================================
+
+namespace CIDE.Helpers;
+internal static class AnimationHelper
+{
+    public static async Task WaveClickAsync(this View clicked, params View[] neighbors)
+    {
+        var clickTask = ClickPhysicsAsync(clicked);
+        var neighborTasks = neighbors.Select(async (n, index) =>
+        {
+            await Task.Delay(50 * (index + 1));
+            await NudgeAsync(n);
+        });
+        await Task.WhenAll(new[] { clickTask }.Concat(neighborTasks));
+    }
+    private static async Task ClickPhysicsAsync(View view)
+    {
+        _ = await Task.WhenAll(view.ScaleToAsync(0.85, 100, Easing.CubicOut), view.FadeToAsync(0.8, 100));
+        _ = await Task.WhenAll(view.ScaleToAsync(1.0, 300, Easing.SpringOut), view.FadeToAsync(1.0, 150));
+    }
+    private static async Task NudgeAsync(View view)
+    {
+        _ = await Task.WhenAll(view.TranslateToAsync(15, 0, 120, Easing.CubicOut), view.ScaleToAsync(0.95, 120, Easing.CubicOut));
+        _ = await Task.WhenAll(view.TranslateToAsync(0, 0, 300, Easing.SpringOut), view.ScaleToAsync(1.0, 300, Easing.SpringOut));
+    }
+    public static async Task FadeInWithShiftAsync(this View view, uint duration = 500)
+    {
+        view.Opacity = 0;
+        view.TranslationY = 30;
+        view.IsVisible = true;
+        _ = await Task.WhenAll(view.FadeToAsync(1, duration, Easing.CubicOut), view.TranslateToAsync(0, 0, duration, Easing.CubicOut));
+    }
+}
+
+
+======================================================================
+FILE: Helpers\Converters.cs
+======================================================================
+
+using System.Globalization;
+namespace CIDE.Helpers;
+internal sealed class DepthToMarginConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        new Thickness((value is int d ? d : 0) * (16 + 5), 0, 5, 0);
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => 0;
+}
+
+
+======================================================================
+FILE: Helpers\Win32FileDialog.cs
+======================================================================
+
+using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
+namespace CIDE.Helpers;
+public static class Win32FileDialog
+{
+    private const uint FOS_PICKFOLDERS = 0x00000020;
+    private const uint FOS_FORCEFILESYSTEM = 0x00000040;
+    private const uint SIGDN_FILESYSPATH = 0x80058000;
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct COMDLG_FILTERSPEC
+    {
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string pszName;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string pszSpec;
+    }
+    public static string? ShowFolderPicker(IntPtr owner)
+    {
+        try
+        {
+            var dialog = (IFileOpenDialog)new FileOpenDialog();
+            dialog.SetOptions(FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM);
+            dialog.SetTitle("Выберите папку проекта");
+            var hr = dialog.Show(owner);
+            if (hr == 0) 
+            {
+                dialog.GetResult(out var item);
+                if (item != null)
+                {
+                    item.GetDisplayName(SIGDN_FILESYSPATH, out var path);
+                    return path;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Win32 FolderPicker Error: {ex}");
+        }
+        return null;
+    }
+    public static string? ShowFilePicker(IntPtr owner, string title, string filterName, string filterSpec)
+    {
+        try
+        {
+            var dialog = (IFileOpenDialog)new FileOpenDialog();
+            dialog.SetOptions(FOS_FORCEFILESYSTEM);
+            dialog.SetTitle(title);
+            var filters = new COMDLG_FILTERSPEC[]
+            {
+                new() { pszName = filterName, pszSpec = filterSpec },
+                new() { pszName = "Все файлы (*.*)", pszSpec = "*.*" }
+            };
+            dialog.SetFileTypes((uint)filters.Length, filters);
+            var hr = dialog.Show(owner);
+            if (hr == 0) 
+            {
+                dialog.GetResult(out var item);
+                if (item != null)
+                {
+                    item.GetDisplayName(SIGDN_FILESYSPATH, out var path);
+                    return path;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Win32 FilePicker Error: {ex}");
+        }
+        return null;
+    }
+    [ComImport]
+    [Guid("42f85136-db7e-439c-8591-e4075d135fc8")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IFileDialog
+    {
+        [PreserveSig]
+        public int Show([In] IntPtr parent);
+        public void SetFileTypes([In] uint cFileTypes, [In, MarshalAs(UnmanagedType.LPArray)] COMDLG_FILTERSPEC[] rgFilterSpec);
+        public void SetFileTypeIndex([In] uint iFileType);
+        public void GetFileTypeIndex(out uint piFileType);
+        public void Advise([In, MarshalAs(UnmanagedType.Interface)] IntPtr pfde, out uint pdwCookie);
+        public void Unadvise([In] uint dwCookie);
+        public void SetOptions([In] uint fos);
+        public void GetOptions(out uint pfos);
+        public void SetDefaultFolder([In] IShellItem psi);
+        public void SetFolder([In] IShellItem psi);
+        public void GetFolder(out IShellItem ppsi);
+        public void GetCurrentSelection(out IShellItem ppsi);
+        public void SetFileName([In, MarshalAs(UnmanagedType.LPWStr)] string pszName);
+        public void GetFileName(out IntPtr pszName);
+        public void SetTitle([In, MarshalAs(UnmanagedType.LPWStr)] string pszTitle);
+        public void SetOkButtonLabel([In, MarshalAs(UnmanagedType.LPWStr)] string pszText);
+        public void SetFileNameLabel([In, MarshalAs(UnmanagedType.LPWStr)] string pszLabel);
+        public void GetResult(out IShellItem ppsi);
+        public void AddPlace([In] IShellItem psi, int fdap);
+        public void SetDefaultExtension([In, MarshalAs(UnmanagedType.LPWStr)] string pszDefaultExtension);
+        public void Close([In] int hr);
+        public void SetClientGuid([In] ref Guid guid);
+        public void ClearClientData();
+        public void SetFilter([In] IntPtr pFilter);
+    }
+    [ComImport]
+    [Guid("d57c7288-d4ad-4768-be02-9d969532d960")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IFileOpenDialog : IFileDialog
+    {
+        [PreserveSig]
+        public new int Show([In] IntPtr parent);
+        public new void SetFileTypes([In] uint cFileTypes, [In, MarshalAs(UnmanagedType.LPArray)] COMDLG_FILTERSPEC[] rgFilterSpec);
+        public new void SetFileTypeIndex([In] uint iFileType);
+        public new void GetFileTypeIndex(out uint piFileType);
+        public new void Advise([In, MarshalAs(UnmanagedType.Interface)] IntPtr pfde, out uint pdwCookie);
+        public new void Unadvise([In] uint dwCookie);
+        public new void SetOptions([In] uint fos);
+        public new void GetOptions(out uint pfos);
+        public new void SetDefaultFolder([In] IShellItem psi);
+        public new void SetFolder([In] IShellItem psi);
+        public new void GetFolder(out IShellItem ppsi);
+        public new void GetCurrentSelection(out IShellItem ppsi);
+        public new void SetFileName([In, MarshalAs(UnmanagedType.LPWStr)] string pszName);
+        public new void GetFileName(out IntPtr pszName);
+        public new void SetTitle([In, MarshalAs(UnmanagedType.LPWStr)] string pszTitle);
+        public new void SetOkButtonLabel([In, MarshalAs(UnmanagedType.LPWStr)] string pszText);
+        public new void SetFileNameLabel([In, MarshalAs(UnmanagedType.LPWStr)] string pszLabel);
+        public new void GetResult(out IShellItem ppsi);
+        public new void AddPlace([In] IShellItem psi, int fdap);
+        public new void SetDefaultExtension([In, MarshalAs(UnmanagedType.LPWStr)] string pszDefaultExtension);
+        public new void Close([In] int hr);
+        public new void SetClientGuid([In] ref Guid guid);
+        public new void ClearClientData();
+        public new void SetFilter([In] IntPtr pFilter);
+        public void GetResults(out object ppenum);
+        public void GetSelectedItems(out object ppselitems);
+    }
+    [ComImport]
+    [Guid("43826d1e-e718-42ee-bc55-a1e261c37bfe")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    internal interface IShellItem
+    {
+        public void BindToHandler([In] IntPtr pbc, [In] ref Guid bhid, [In] ref Guid riid, out IntPtr ppv);
+        public void GetParent(out IShellItem ppsi);
+        public void GetDisplayName([In] uint sigdnName, [MarshalAs(UnmanagedType.LPWStr)] out string ppszName);
+        public void GetAttributes([In] uint sfgaoMask, out uint psfgaoAttribs);
+        public void Compare([In] IShellItem psi, [In] uint hint, out int piOrder);
+    }
+    [ComImport]
+    [Guid("DC1C5A9C-E88A-4DDE-A5A1-60F82A20AEF7")]
+    private class FileOpenDialog
+    {
+    }
+}
+
+
+======================================================================
+FILE: Models\Models.cs
+======================================================================
+
+using System.Collections.ObjectModel;
+using System.Text.Json.Serialization;
+using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.Maui;
+namespace CIDE.Models;
+public enum FileNodeKind { Solution, Project, Folder, File }
+public partial class FileNode : ObservableObject
+{
+    public string Name { get; set; } = "";
+    public string FullPath { get; set; } = "";
+    public FileNodeKind Kind { get; set; }
+    public ObservableCollection<FileNode> Children { get; set; } = [];
+    [ObservableProperty]
+    public partial bool IsExpanded { get; set; }
+    public bool IsPopulated { get; set; }
+    public int Depth { get; set; }
+    public Thickness TreeMargin => new Thickness(Depth * 15, 0, 0, 0);
+    public string Glyph => Kind switch
+    {
+        FileNodeKind.Solution => "\uE810", 
+        FileNodeKind.Project => "\uE80F", 
+        FileNodeKind.Folder => IsExpanded ? "\uE974" : "\uE972", 
+        FileNodeKind.File => "\uE8A0", 
+        _ => " "
+    };
+    public string GlyphColor => Kind == FileNodeKind.Folder ? "#858585" : "#858585";
+    public string IconText => Kind switch
+    {
+        FileNodeKind.Solution => "\uE71B",
+        FileNodeKind.Project => "\uE7B8",
+        FileNodeKind.Folder => IsExpanded ? "\uE8E5" : "\uE8B7",
+        FileNodeKind.File => Path.GetExtension(Name).ToLowerInvariant() switch
+        {
+            ".cs" or ".cpp" or ".c" or ".h" or ".hpp" => "\uE943",
+            ".csproj" or ".sln" or ".slnx" => "\uE713",
+            ".xaml" => "\uE7C3",
+            ".json" => "\uE7C3",
+            _ => "\uE7C3"
+        },
+        _ => "\uE7C3"
+    };
+    public string IconColor => Kind switch
+    {
+        FileNodeKind.Solution => "#C586C0",
+        FileNodeKind.Project => "#4EC9B0",
+        FileNodeKind.Folder => "#E8C56D",
+        FileNodeKind.File => Path.GetExtension(Name).ToLowerInvariant() switch
+        {
+            ".cs" => "#9CDCFE",
+            ".csproj" => "#4EC9B0",
+            ".xaml" or ".json" => "#CE9178",
+            ".md" => "#D4D4D4",
+            ".slnx" => "#C586C0",
+            _ => "#858585"
+        },
+        _ => "#858585"
+    };
+    partial void OnIsExpandedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(Glyph));
+        OnPropertyChanged(nameof(IconText));
+    }
+}
+public partial class EditorTab : ObservableObject
+{
+    public string FilePath { get; set; } = "";
+    [ObservableProperty]
+    public partial string Content { get; set; } = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayName))]
+    public partial bool IsModified { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BackgroundBrush))]
+    public partial bool IsActive { get; set; }
+    public string FileName => Path.GetFileName(FilePath);
+    public string DisplayName => IsModified ? $"● {FileName}" : FileName;
+    public string BackgroundBrush => IsActive ? "#1E1E1E" : "Transparent";
+}
+public class RecentEntry
+{
+    public string Path { get; set; } = "";
+    public string Type { get; set; } = "folder";
+    public DateTime LastOpened { get; set; } = DateTime.Now;
+    public string Name => System.IO.Path.GetFileName(Path.TrimEnd('\\', '/'));
+    public string Icon => Type == "solution" ? "⬡" : "▸";
+}
+[JsonSerializable(typeof(List<RecentEntry>))]
+[JsonSerializable(typeof(string))]
+internal sealed partial class CideJsonContext : JsonSerializerContext
+{
+}
+
+
+======================================================================
+FILE: PageModels\MainPageModel.cs
+======================================================================
+
+namespace CIDE.PageModels;
+
+[QueryProperty(nameof(WorkspacePath), "path")]
+internal sealed partial class MainPageModel : ObservableObject
+{
+    [ObservableProperty]
+    public partial ObservableCollection<FileNode> FlatTree { get; set; } = [];
+    [ObservableProperty]
+    public partial ObservableCollection<EditorTab> Tabs { get; set; } = [];
+    [ObservableProperty]
+    public partial EditorTab? ActiveTab { get; set; }
+    [ObservableProperty]
+    public partial string StatusText { get; set; } = "Готов";
+    [ObservableProperty]
+    public partial string ExplorerTitle { get; set; } = "ОБОЗРЕВАТЕЛЬ";
+    [ObservableProperty]
+    public partial bool IsEditorVisible { get; set; }
+    [ObservableProperty]
+    public partial ObservableCollection<string> BuildProfiles { get; set; } = ["Один файл (C/C++)", "Makefile (C/C++)", "Проект C# (.slnx/.csproj)"];
+    [ObservableProperty]
+    public partial string SelectedBuildProfile { get; set; } = "Один файл (C/C++)";
+    [ObservableProperty]
+    public partial bool IsOutputVisible { get; set; }
+    [ObservableProperty]
+    public partial string CompilerOutput { get; set; } = "";
+    [ObservableProperty]
+    public partial string Breadcrumbs { get; set; } = "";
+    [ObservableProperty]
+    public partial bool IsAutoSaveEnabled { get; set; } = true;
+    [ObservableProperty]
+    public partial ObservableCollection<string> TerminalProfiles { get; set; } = [];
+    [ObservableProperty]
+    public partial string SelectedTerminalProfile { get; set; } = "";
+    [ObservableProperty]
+    public partial ObservableCollection<string> BuildTargets { get; set; } = [];
+    [ObservableProperty]
+    public partial string? SelectedBuildTarget { get; set; }
+    private FileNode? _rootNode;
+    private string? _workspacePath { get; set; }
+    internal event Action<string, string>? FileOpened;
+    internal event Func<Task>? FileSaving;
+
+    public string? WorkspacePath
+    {
+        get => _workspacePath;
+        set
+        {
+            _workspacePath = value;
+            if (!string.IsNullOrEmpty(value))
+            {
+                LoadWorkspace(value);
+            }
+        }
+    }
+    private void LoadWorkspace(string path)
+    {
+        _rootNode = WorkspaceService.BuildFolderTree(path);
+        ExplorerTitle = Path.GetFileName(path).ToUpperInvariant();
+        RebuildFlatTree();
+        StatusText = $"Открыт проект: {ExplorerTitle}";
+        DetectTerminals();
+        UpdateBuildProfilesAndTargets(path);
+    }
+    private void RebuildFlatTree()
+    {
+        FlatTree.Clear();
+        if (_rootNode != null)
+        {
+            AddFlatNodes(_rootNode);
+        }
+    }
+
+    private void AddFlatNodes(FileNode node)
+    {
+        FlatTree.Add(node);
+        if (node.IsExpanded)
+        {
+            foreach (var child in node.Children)
+            {
+                AddFlatNodes(child);
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleNode(FileNode? node)
+    {
+        if (node is null || node.Kind == FileNodeKind.File)
+        {
+            return;
+        }
+        if (!node.IsPopulated)
+        {
+            WorkspaceService.FillChildren(node, new DirectoryInfo(node.FullPath), node.Depth + 1);
+        }
+        node.IsExpanded = !node.IsExpanded;
+        var index = FlatTree.IndexOf(node);
+        if (index < 0)
+        {
+            return;
+        }
+        if (node.IsExpanded)
+        {
+            var insertIndex = index + 1;
+            InsertNodeChildren(node, ref insertIndex);
+        }
+        else
+        {
+            var countToRemove = CountVisibleDescendants(node);
+            for (var i = 0; i < countToRemove; i++)
+            {
+                FlatTree.RemoveAt(index + 1);
+            }
+        }
+    }
+    private void InsertNodeChildren(FileNode node, ref int insertIndex)
+    {
+        foreach (var child in node.Children)
+        {
+            FlatTree.Insert(insertIndex++, child);
+            if (child.IsExpanded)
+            {
+                InsertNodeChildren(child, ref insertIndex);
+            }
+        }
+    }
+    private static int CountVisibleDescendants(FileNode node)
+    {
+        var count = node.Children.Count;
+        foreach (var child in node.Children)
+        {
+            if (child.IsExpanded)
+            {
+                count += CountVisibleDescendants(child);
+            }
+        }
+        return count;
+    }
+    [RelayCommand]
+    private async Task SelectNodeAsync(FileNode? node)
+    {
+        if (node is null)
+        {
+            return;
+        }
+        if (node.Kind == FileNodeKind.File)
+        {
+            await OpenFileAsync(node.FullPath);
+        }
+        else
+        {
+            await ToggleNodeAsync(node);
+        }
+    }
+    private async Task ToggleNodeAsync(FileNode node)
+    {
+        if (!node.IsPopulated)
+        {
+            await Task.Run(() => WorkspaceService.FillChildren(node, new DirectoryInfo(node.FullPath), node.Depth + 1));
+        }
+        node.IsExpanded = !node.IsExpanded;
+        var index = FlatTree.IndexOf(node);
+        if (index < 0)
+        {
+            return;
+        }
+        if (node.IsExpanded)
+        {
+            var insertIndex = index + 1;
+            InsertNodeChildren(node, ref insertIndex);
+        }
+        else
+        {
+            var countToRemove = CountVisibleDescendants(node);
+            for (var i = 0; i < countToRemove; i++)
+            {
+                FlatTree.RemoveAt(index + 1);
+            }
+        }
+    }
+
+    private async Task OpenFileAsync(string path)
+    {
+        var existing = Tabs.FirstOrDefault(t => t.FilePath == path);
+        if (existing != null)
+        {
+            await ActivateTabAsync(existing);
+            return;
+        }
+
+        StatusText = $"Загрузка: {Path.GetFileName(path)}";
+        var content = await WorkspaceService.ReadFileAsync(path);
+        EditorTab tab = new() { FilePath = path, Content = content };
+        Tabs.Add(tab);
+        await ActivateTabAsync(tab);
+        StatusText = "Готов";
+    }
+
+    [RelayCommand]
+    private async Task ActivateTabAsync(EditorTab? tab)
+    {
+        if (tab is null)
+        {
+            return;
+        }
+        if (ActiveTab != null && FileSaving != null)
+        {
+            await FileSaving.Invoke();
+            if (IsAutoSaveEnabled && ActiveTab.IsModified)
+            {
+                await WorkspaceService.SaveFileAsync(ActiveTab.FilePath, ActiveTab.Content);
+                ActiveTab.IsModified = false;
+            }
+        }
+
+        foreach (var t in Tabs)
+        {
+            t.IsActive = false;
+        }
+
+        tab.IsActive = true;
+        ActiveTab = tab;
+        Breadcrumbs = tab.FilePath.Replace(WorkspacePath ?? "", "").TrimStart('\\', '/').Replace("\\", " > ").Replace("/", " > ");
+        IsEditorVisible = true;
+        var monacoLang = Path.GetExtension(tab.FilePath).ToLowerInvariant() switch
+        {
+            ".c" => "c",
+            ".cpp" or ".h" or ".hpp" => "cpp",
+            ".cs" => "csharp",
+            ".json" => "json",
+            ".xml" or ".xaml" or ".csproj" => "xml",
+            ".md" => "markdown", 
+            _ => "plaintext"     
+        };
+        FileOpened?.Invoke(tab.Content, monacoLang);
+    }
+
+    [RelayCommand]
+    internal async Task CloseTabAsync(EditorTab? tab)
+    {
+        if (tab != null)
+        {
+            _ = Tabs.Remove(tab);
+        }
+
+        if (Tabs.Count == 0)
+        {
+            ActiveTab = null;
+            IsEditorVisible = false;
+            Breadcrumbs = "";
+        }
+        else
+        {
+            await ActivateTabAsync(Tabs.Last());
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveActiveFileAsync()
+    {
+        if (ActiveTab is null || FileSaving is null)
+        {
+            return;
+        }
+
+        await FileSaving.Invoke();
+        await WorkspaceService.SaveFileAsync(ActiveTab.FilePath, ActiveTab.Content);
+        ActiveTab.IsModified = false;
+        StatusText = "✅ Сохранено";
+    }
+
+    [RelayCommand]
+    internal async Task GoBackAsync()
+    {
+        _ = IsOutputVisible;
+        await Shell.Current.GoToAsync("//WelcomePage");
+    }
+
+    [RelayCommand]
+    internal void ToggleOutput() => IsOutputVisible = !IsOutputVisible;
+
+    [RelayCommand]
+    internal async Task RunCommandAsync()
+    {
+        IsOutputVisible = true;
+        CompilerOutput = "";
+        await SaveActiveFileAsync();
+        await CompileService.RunCompilationAsync(SelectedBuildProfile, ActiveTab?.FilePath ?? "", WorkspacePath ?? "", output => MainThread.BeginInvokeOnMainThread(() => CompilerOutput += output));
+    }
+    private void DetectTerminals()
+    {
+        TerminalProfiles.Clear();
+        TerminalProfiles.Add("PowerShell");
+        TerminalProfiles.Add("CMD");
+        var wslPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "wsl.exe");
+        if (File.Exists(wslPath))
+        {
+            TerminalProfiles.Add("WSL");
+        }
+        SelectedTerminalProfile = TerminalProfiles[0];
+    }
+    private void UpdateBuildProfilesAndTargets(string path)
+    {
+        var dir = new DirectoryInfo(path);
+        BuildProfiles.Clear();
+        BuildTargets.Clear();
+        var hasCSharp = dir.GetFiles("*.csproj", SearchOption.AllDirectories).Length > 0 ||
+                         dir.GetFiles("*.slnx", SearchOption.AllDirectories).Length > 0;
+        var hasMakefile = dir.GetFiles("Makefile", SearchOption.TopDirectoryOnly).Length > 0;
+        if (hasCSharp)
+        {
+            BuildProfiles.Add("Проект C#");
+            BuildTargets.Add("Основной проект");
+        }
+        else
+        {
+            BuildProfiles.Add("Один файл (C/C++)");
+            if (hasMakefile)
+            {
+                BuildProfiles.Add("Makefile");
+            }
+            var cFiles = dir.GetFiles("*.*", SearchOption.AllDirectories)
+                            .Where(f => f.Extension == ".c" || f.Extension == ".cpp");
+            foreach (var f in cFiles)
+            {
+                BuildTargets.Add(f.Name);
+            }
+        }
+        if (BuildProfiles.Count > 0)
+        {
+            SelectedBuildProfile = BuildProfiles[0];
+        }
+        if (BuildTargets.Count > 0)
+        {
+            SelectedBuildTarget = BuildTargets[0];
+        }
+    }
+
+    [RelayCommand]
+    internal async Task BuildCommandAsync() => await RunCommandAsync();
+}
+
+
+======================================================================
+FILE: PageModels\WelcomePageModel.cs
+======================================================================
+
+using System.Collections.ObjectModel;
+using CIDE.Models;
+using CIDE.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
+namespace CIDE.PageModels;
+
+internal sealed partial class WelcomePageModel : ObservableObject
+{
+    public static ObservableCollection<RecentEntry> Recents => WorkspaceService.Recents;
+    [ObservableProperty]
+    public partial string ToolchainStatus { get; set; } = "Проверка компиляторов...";
+
+    public WelcomePageModel()
+    {
+        WorkspaceService.LoadRecents();
+        _ = CheckToolchainAsync();
+    }
+
+    private async Task CheckToolchainAsync() =>
+        await ToolchainService.InstallMinGWAsync(msg => MainThread.BeginInvokeOnMainThread(() => ToolchainStatus = msg));
+
+    [RelayCommand]
+    public static async Task OpenFolderAsync()
+    {
+        var path = await WorkspaceService.PickFolderAsync();
+        if (path != null)
+        {
+            await GoToWorkspaceAsync(path);
+        }
+    }
+
+    [RelayCommand]
+    public static async Task OpenSolutionAsync()
+    {
+        var path = await WorkspaceService.PickSolutionAsync();
+        if (path != null)
+        {
+            await GoToWorkspaceAsync(path);
+        }
+    }
+
+    [RelayCommand]
+    public static async Task OpenRecentAsync(RecentEntry? entry)
+    {
+        if (entry != null && (Directory.Exists(entry.Path) || File.Exists(entry.Path)))
+        {
+            await GoToWorkspaceAsync(entry.Path);
+        }
+    }
+
+    private static async Task GoToWorkspaceAsync(string path) =>
+        await Shell.Current.GoToAsync($"MainPage?path={Uri.EscapeDataString(path)}");
+}
+
+
+======================================================================
+FILE: Pages\MainPage.xaml
+======================================================================
+
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pm="clr-namespace:CIDE.PageModels"
+             xmlns:m="clr-namespace:CIDE.Models"
+             xmlns:helpers="clr-namespace:CIDE.Helpers"
+             x:Class="CIDE.Pages.MainPage"
+             Shell.NavBarIsVisible="False"
+             x:ClassModifier="internal"
+             BackgroundColor="#1E1E1E">
+
+    <ContentPage.Resources>
+        <helpers:DepthToMarginConverter x:Key="DepthConverter"/>
+    </ContentPage.Resources>
+
+    <!-- IDE Workspace -->
+    <Grid RowDefinitions="40, *, 24">
+
+        <!-- Toolbar -->
+        <Border Grid.Row="0" BackgroundColor="#252526" StrokeThickness="0" Padding="15,5">
+            <Grid ColumnDefinitions="Auto, Auto, *, Auto, Auto, Auto, Auto" ColumnSpacing="15">
+
+                <Button Grid.Column="0" Text="⌂ В меню" Command="{Binding GoBackCommand}" BackgroundColor="Transparent" TextColor="#CCC" Padding="5"/>
+
+                <HorizontalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center" Margin="10,0,0,0">
+                    <CheckBox IsChecked="{Binding IsAutoSaveEnabled}" Color="#4EC9B0" WidthRequest="20" HeightRequest="20"/>
+                    <Label Text="Автосохранение" TextColor="#999" FontSize="12" VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+
+                <HorizontalStackLayout Grid.Column="3" Spacing="10" VerticalOptions="Center">
+                    <Label Text="Терминал:" TextColor="#888" FontSize="11" VerticalOptions="Center"/>
+                    <Picker ItemsSource="{Binding TerminalProfiles}" SelectedItem="{Binding SelectedTerminalProfile}" 
+                            TextColor="#CCC" BackgroundColor="#1E1E1E" WidthRequest="110" FontSize="12"/>
+                </HorizontalStackLayout>
+
+                <HorizontalStackLayout Grid.Column="4" Spacing="10" VerticalOptions="Center">
+                    <Label Text="Сборка:" TextColor="#888" FontSize="11" VerticalOptions="Center"/>
+                    <Picker ItemsSource="{Binding BuildProfiles}" SelectedItem="{Binding SelectedBuildProfile}" 
+                            TextColor="#CCC" BackgroundColor="#1E1E1E" WidthRequest="130" FontSize="12"/>
+                    <Picker ItemsSource="{Binding BuildTargets}" SelectedItem="{Binding SelectedBuildTarget}" 
+                            TextColor="#CCC" BackgroundColor="#1E1E1E" WidthRequest="130" FontSize="12"/>
+                </HorizontalStackLayout>
+
+                <Button Grid.Column="5" Text="🛠 Сборка" Command="{Binding BuildCommand}" 
+                        BackgroundColor="#333" TextColor="#CCC" CornerRadius="4" Padding="15,0" FontSize="12"/>
+                <Button Grid.Column="6" Text="▶ Запуск" Command="{Binding RunCommand}" 
+                        BackgroundColor="#007ACC" TextColor="White" CornerRadius="4" Padding="15,0" FontAttributes="Bold" FontSize="12"/>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="260, 2, *">
+            <!-- Обозреватель -->
+            <Border Grid.Column="0" BackgroundColor="#252526" Stroke="#333" StrokeThickness="1">
+                <Grid RowDefinitions="35, *">
+                    <Label Grid.Row="0" Text="{Binding ExplorerTitle}" TextColor="Gray" FontSize="11" Margin="15,10,0,0" FontAttributes="Bold"/>
+
+                    <CollectionView Grid.Row="1" 
+                        VerticalOptions="Fill"
+                        VerticalScrollBarVisibility="Always" 
+                        ItemsSource="{Binding FlatTree}" 
+                        SelectionMode="Single" 
+                        SelectionChanged="OnTreeSelectionChangedAsync">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="m:FileNode">
+                                <Grid ColumnDefinitions="20, 24, *" Margin="{Binding TreeMargin}" Padding="0,5">
+                                    <Label Grid.Column="0" Text="{Binding Glyph}" FontFamily="Segoe MDL2 Assets" TextColor="{Binding GlyphColor}" FontSize="10" VerticalOptions="Center" HorizontalOptions="Center"/>
+                                    <Label Grid.Column="1" Text="{Binding IconText}" FontFamily="Segoe MDL2 Assets" TextColor="{Binding IconColor}" FontSize="12" VerticalOptions="Center" HorizontalOptions="Center"/>
+                                    <Label Grid.Column="2" Text="{Binding Name}" TextColor="#CCC" FontSize="13" VerticalOptions="Center" LineBreakMode="TailTruncation"/>
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </Grid>
+            </Border>
+
+            <BoxView Grid.Column="1" Color="#333"/>
+
+            <!-- Область редактора и вывода -->
+            <Grid Grid.Column="2" RowDefinitions="35, 24, *, Auto">
+
+                <!-- Панель вкладок -->
+                <Border Grid.Row="0" BackgroundColor="#2D2D2D" Stroke="#333" StrokeThickness="1">
+                    <ScrollView Orientation="Horizontal">
+                        <HorizontalStackLayout BindableLayout.ItemsSource="{Binding Tabs}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="m:EditorTab">
+                                    <Border BackgroundColor="{Binding BackgroundBrush}" Stroke="#333" StrokeThickness="1" Padding="15,0,5,0">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding BindingContext.ActivateTabCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" CommandParameter="{Binding}"/>
+                                        </Border.GestureRecognizers>
+                                        <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                                            <Label Text="{Binding DisplayName}" TextColor="#CCC" VerticalOptions="Center"/>
+                                            <Button Text="✕" WidthRequest="30" HeightRequest="30" Padding="0" BackgroundColor="Transparent" TextColor="#CCC"
+                                                    Command="{Binding BindingContext.CloseTabCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" CommandParameter="{Binding}"/>
+                                        </HorizontalStackLayout>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </HorizontalStackLayout>
+                    </ScrollView>
+                </Border>
+
+                <!-- Хлебные крошки -->
+                <Border Grid.Row="1" BackgroundColor="#1E1E1E" StrokeThickness="1" Stroke="#2D2D2D" Padding="15,4">
+                    <Label Text="{Binding Breadcrumbs}" TextColor="Gray" FontSize="11" VerticalOptions="Center"/>
+                </Border>
+
+                <!-- Заглушка (когда нет открытых файлов) -->
+                <VerticalStackLayout Grid.Row="2" VerticalOptions="Center" HorizontalOptions="Center" Spacing="15">
+                    <VerticalStackLayout.Triggers>
+                        <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding IsEditorVisible}" Value="True">
+                            <Setter Property="IsVisible" Value="False" />
+                        </DataTrigger>
+                    </VerticalStackLayout.Triggers>
+
+                    <Label Text="CIDE" FontSize="80" TextColor="#252526" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Label Text="Выберите файл в обозревателе для редактирования" TextColor="#333333" FontSize="14" HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+
+                <!-- Движок Monaco (WebView) -->
+                <WebView Grid.Row="2" 
+                         x:Name="MonacoView"
+                         IsVisible="{Binding IsEditorVisible}"
+                         Margin="0"/>
+
+                <!-- Панель вывода (Скрываемая) -->
+                <Grid Grid.Row="3" RowDefinitions="30, *" BackgroundColor="#1E1E1E" IsVisible="{Binding IsOutputVisible}" HeightRequest="200">
+                    <Border Grid.Row="0" BackgroundColor="#2D2D2D" Stroke="#333" StrokeThickness="1">
+                        <HorizontalStackLayout Spacing="15" Padding="15,0">
+                            <Label Text="ВЫВОД" TextColor="#CCC" VerticalOptions="Center" FontAttributes="Bold" FontSize="11"/>
+                            <Label Text="ТЕРМИНАЛ" TextColor="Gray" VerticalOptions="Center" FontSize="11"/>
+                            <Label Text="ПРОБЛЕМЫ" TextColor="Gray" VerticalOptions="Center" FontSize="11"/>
+                            <Button Text="✕" Command="{Binding ToggleOutputCommand}" TextColor="Gray" BackgroundColor="Transparent" Padding="5,0" Margin="20,0,0,0"/>
+                        </HorizontalStackLayout>
+                    </Border>
+                    <ScrollView Grid.Row="1" Padding="10">
+                        <Label x:Name="OutputLabel" TextColor="#D4D4D4" FontFamily="Consolas" FontSize="12"/>
+                    </ScrollView>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- StatusBar -->
+        <Grid Grid.Row="2" BackgroundColor="#007ACC" ColumnDefinitions="*, Auto, Auto" Padding="15,0">
+            <Label Grid.Column="0" Text="{Binding StatusText}" TextColor="White" FontSize="11" VerticalOptions="Center"/>
+            <HorizontalStackLayout Grid.Column="1" Spacing="15" Margin="0,0,20,0" VerticalOptions="Center">
+                <Label Text="LF" TextColor="White" FontSize="11"/>
+                <Label Text="UTF-8" TextColor="White" FontSize="11"/>
+            </HorizontalStackLayout>
+            <Label Grid.Column="2" Text="{Binding SelectedBuildProfile}" TextColor="White" FontSize="11" VerticalOptions="Center" FontAttributes="Bold"/>
+        </Grid>
+    </Grid>
+</ContentPage>
+
+
+======================================================================
+FILE: Pages\MainPage.xaml.cs
+======================================================================
+
+using System.Text.Json;
+using CIDE.Models;
+using CIDE.Services;
+using CIDE.PageModels;
+namespace CIDE.Pages;
+internal sealed partial class MainPage : ContentPage
+{
+    private readonly MainPageModel _model;
+    public MainPage(MainPageModel model)
+    {
+        InitializeComponent();
+        _model = model;
+        BindingContext = _model;
+        _model.FileOpened += OnFileOpenedAsync;
+        _model.FileSaving += OnFileSavingAsync;
+        _model.PropertyChanged += OnModelPropertyChanged;
+        MonacoView.Navigating += OnMonacoViewNavigating;
+        LoadMonacoEditorAsync();
+    }
+    private void OnMonacoViewNavigating(object? sender, WebNavigatingEventArgs e)
+    {
+        if (e.Url is { } url)
+        {
+            if (url.StartsWith("cide://modified", StringComparison.OrdinalIgnoreCase))
+            {
+                e.Cancel = true;
+                if (_model.ActiveTab is { } tab)
+                {
+                    tab.IsModified = true;
+                }
+            }
+            else if (url.StartsWith("cide://save", StringComparison.OrdinalIgnoreCase))
+            {
+                e.Cancel = true;
+                if (_model.SaveActiveFileCommand.CanExecute(null))
+                {
+                    _model.SaveActiveFileCommand.Execute(null);
+                }
+            }
+        }
+    }
+    private async void LoadMonacoEditorAsync()
+    {
+        using var stream = await FileSystem.OpenAppPackageFileAsync("monaco.html");
+        using StreamReader reader = new(stream);
+        var html = await reader.ReadToEndAsync();
+        MonacoView.Source = new HtmlWebViewSource { Html = html };
+    }
+    private void OnTreeSelectionChangedAsync(object? sender, SelectionChangedEventArgs e)
+    {
+        if (e.CurrentSelection is { Count: > 0 } selection && selection[0] is FileNode node)
+        {
+            _model.SelectNodeCommand.Execute(node);
+            ((CollectionView)sender!).SelectedItem = null;
+        }
+    }
+    private async void OnFileOpenedAsync(string content, string language)
+    {
+        try
+        {
+            content ??= "";
+            var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+            var base64Content = Convert.ToBase64String(bytes);
+            var jsScript = $@"
+            try {{
+                var binaryStr = window.atob('{base64Content}');
+                var bytes = new Uint8Array(binaryStr.length);
+                for (var i = 0; i < binaryStr.length; i++) {{
+                    bytes[i] = binaryStr.charCodeAt(i);
+                }}
+                var decodedStr = new TextDecoder('utf-8').decode(bytes);
+                // Вызываем твой метод из monaco.html!
+                if (typeof setEditorText === 'function') {{
+                    setEditorText(decodedStr, '{language}');
+                }} else if (window.editor) {{
+                    window.editor.setValue(decodedStr);
+                    monaco.editor.setModelLanguage(window.editor.getModel(), '{language}');
+                }}
+            }} catch(e) {{ console.error('JS Error:', e); }}
+        ";
+            _ = await MonacoView.EvaluateJavaScriptAsync(jsScript);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Ошибка вставки: {ex.Message}");
+        }
+    }
+    private async Task OnFileSavingAsync()
+    {
+        try
+        {
+            var jsScript = @"
+            (function() {
+                try {
+                    var text = typeof getEditorText === 'function' ? getEditorText() : (window.editor ? window.editor.getValue() : '');
+                    var bytes = new TextEncoder().encode(text);
+                    var binaryStr = '';
+                    for (var i = 0; i < bytes.byteLength; i++) {
+                        binaryStr += String.fromCharCode(bytes[i]);
+                    }
+                    return window.btoa(binaryStr);
+                } catch(e) { return ''; }
+            })();
+        ";
+            var rawBase64 = await MonacoView.EvaluateJavaScriptAsync(jsScript);
+            if (!string.IsNullOrEmpty(rawBase64) && rawBase64 != "null" && _model.ActiveTab is { } tab)
+            {
+                var cleanBase64 = rawBase64.Trim('"');
+                if (!string.IsNullOrEmpty(cleanBase64))
+                {
+                    var bytes = Convert.FromBase64String(cleanBase64);
+                    tab.Content = System.Text.Encoding.UTF8.GetString(bytes);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Ошибка сохранения кода: {ex.Message}");
+        }
+    }
+    private void OnModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainPageModel.CompilerOutput))
+        {
+            UpdateColoredOutput(_model.CompilerOutput);
+        }
+    }
+    private void OnSaveHotkeyPressed(object? sender, EventArgs e)
+    {
+        if (_model.SaveActiveFileCommand.CanExecute(null))
+        {
+            _model.SaveActiveFileCommand.Execute(null);
+        }
+    }
+    private void UpdateColoredOutput(string newOutput)
+    {
+        if (string.IsNullOrEmpty(newOutput))
+        {
+            OutputLabel.FormattedText = null;
+            return;
+        }
+        var formatted = new FormattedString();
+        var lines = newOutput.Split('\n');
+        foreach (var line in lines)
+        {
+            var color = line switch
+            {
+                _ when line.StartsWith("$", StringComparison.OrdinalIgnoreCase) ||
+                       line.StartsWith("[", StringComparison.OrdinalIgnoreCase) => Color.FromArgb("#569CD6"),
+                _ when line.Contains("error", StringComparison.OrdinalIgnoreCase) ||
+                       line.Contains("Ошибка", StringComparison.OrdinalIgnoreCase) => Color.FromArgb("#F44336"),
+                _ when line.Contains("warning", StringComparison.OrdinalIgnoreCase) ||
+                       line.Contains("Предупреждение", StringComparison.OrdinalIgnoreCase) => Color.FromArgb("#FFC107"),
+                _ when line.Contains("success", StringComparison.OrdinalIgnoreCase) ||
+                       line.Contains("Успешно", StringComparison.OrdinalIgnoreCase) => Color.FromArgb("#4CAF50"),
+                _ => Color.FromArgb("#D4D4D4")
+            };
+            formatted.Spans.Add(new Span { Text = line + "\n", TextColor = color });
+        }
+        OutputLabel.FormattedText = formatted;
+    }
+}
+
+
+======================================================================
+FILE: Pages\SettingsPage.xaml
+======================================================================
+
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="CIDE.Pages.SettingsPage"
+             x:ClassModifier="internal"
+             Title="Настройки">
+    <VerticalStackLayout Spacing="20" Padding="40">
+        <Label Text="⚙ Настройки CIDE" FontSize="32" FontAttributes="Bold"/>
+        <Label Text="Здесь будет менеджер SSH подключений, настройки WSL и управление плагинами." TextColor="Gray" />
+    </VerticalStackLayout>
+</ContentPage>
+
+
+======================================================================
+FILE: Pages\SettingsPage.xaml.cs
+======================================================================
+
+namespace CIDE.Pages;
+
+internal sealed partial class SettingsPage : ContentPage
+{
+    public SettingsPage() => InitializeComponent();
+}
+
+
+======================================================================
+FILE: Pages\WelcomePage.xaml
+======================================================================
+
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pm="clr-namespace:CIDE.PageModels"
+             xmlns:m="clr-namespace:CIDE.Models"
+             xmlns:helpers="clr-namespace:CIDE.Helpers"
+             x:Class="CIDE.Pages.WelcomePage"
+             x:ClassModifier="internal"
+             Shell.NavBarIsVisible="False">
+
+    <Grid ColumnDefinitions="300, *">
+        <Grid.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#090714" Offset="0.0"/>
+                <GradientStop Color="#141226" Offset="0.5"/>
+                <GradientStop Color="#0D0B1A" Offset="1.0"/>
+            </LinearGradientBrush>
+        </Grid.Background>
+
+        <!-- Сайдбар недавних -->
+        <Border Grid.Column="0" BackgroundColor="#80090714" StrokeThickness="1" Stroke="#2D2B44">
+            <VerticalStackLayout>
+                <Label Text="CIDE" FontSize="44" FontAttributes="Bold" TextColor="#C586C0" Margin="25,30,0,10"/>
+                <Label Text="C/C++/C# Smart IDE" FontSize="12" TextColor="Gray" Margin="25,0,0,10"/>
+                <Label Text="{Binding ToolchainStatus}" FontSize="10" TextColor="#4EC9B0" Margin="25,0,0,10" />
+                <BoxView HeightRequest="1" Color="#2D2B44" Margin="20,10"/>
+                <Label Text="НЕДАВНИЕ ПРОЕКТЫ" FontSize="11" TextColor="Gray" Margin="25,0,0,10"/>
+
+                <CollectionView ItemsSource="{Binding Recents}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="m:RecentEntry">
+                            <Grid Padding="20,10">
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding BindingContext.OpenRecentCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" CommandParameter="{Binding}"/>
+                                </Grid.GestureRecognizers>
+                                <Grid ColumnDefinitions="30, *">
+                                    <Label Grid.Column="0" Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" TextColor="#E8C56D" FontSize="16" VerticalOptions="Center"/>
+                                    <VerticalStackLayout Grid.Column="1">
+                                        <Label Text="{Binding Name}" TextColor="White" FontSize="14"/>
+                                        <Label Text="{Binding Path}" TextColor="Gray" FontSize="10" LineBreakMode="HeadTruncation"/>
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- Карточки действий -->
+        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="40">
+            <Label Text="Начало работы" FontSize="32" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center"/>
+            <HorizontalStackLayout HorizontalOptions="Center" Spacing="25">
+                <Border x:Name="CardFolder" Background="#601A182A" 
+        Stroke="#4EC9B0" 
+        StrokeThickness="2" 
+        WidthRequest="220" 
+        HeightRequest="200" 
+        Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="12" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnCardFolderTappedAsync" Command="{Binding OpenFolderCommand}"/>
+                    </Border.GestureRecognizers>
+                    <VerticalStackLayout VerticalOptions="Center" Spacing="15">
+                        <Label Text="&#xE8E5;" FontFamily="Segoe MDL2 Assets" FontSize="48" TextColor="#4EC9B0" HorizontalOptions="Center"/>
+                        <Label Text="Открыть папку" TextColor="White" FontSize="16" FontAttributes="Bold" HorizontalOptions="Center"/>
+                        <Label Text="Любой C/C++ проект" FontSize="12" TextColor="Gray" HorizontalOptions="Center"/>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border x:Name="CardSolution" Background="#601A182A" 
+        Stroke="#C586C0" 
+        StrokeThickness="2" 
+        WidthRequest="220" 
+        HeightRequest="200" 
+        Padding="0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="12" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnCardSolutionTappedAsync" Command="{Binding OpenSolutionCommand}"/>
+                    </Border.GestureRecognizers>
+                    <VerticalStackLayout VerticalOptions="Center" Spacing="15">
+                        <Label Text="&#xE71B;" FontFamily="Segoe MDL2 Assets" FontSize="48" TextColor="#C586C0" HorizontalOptions="Center"/>
+                        <Label Text="Открыть решение" TextColor="White" FontSize="16" FontAttributes="Bold" HorizontalOptions="Center"/>
+                        <Label Text=".slnx для C# проектов" FontSize="12" TextColor="Gray" HorizontalOptions="Center"/>
+                    </VerticalStackLayout>
+                </Border>
+
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>
+
+
+======================================================================
+FILE: Pages\WelcomePage.xaml.cs
+======================================================================
+
+using CIDE.PageModels;
+
+namespace CIDE.Pages;
+
+internal sealed partial class WelcomePage : ContentPage
+{
+    public WelcomePage(WelcomePageModel model)
+    {
+        InitializeComponent();
+        BindingContext = model;
+    }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        await AnimationHelper.FadeInWithShiftAsync(CardFolder, 600);
+        await AnimationHelper.FadeInWithShiftAsync(CardSolution, 800);
+    }
+
+    private async void OnCardFolderTappedAsync(object? sender, TappedEventArgs e) =>
+        await AnimationHelper.WaveClickAsync(CardFolder);
+
+    private async void OnCardSolutionTappedAsync(object? sender, TappedEventArgs e) =>
+        await AnimationHelper.WaveClickAsync(CardSolution);
+}
+
+
+======================================================================
+FILE: Platforms\Windows\App.xaml
+======================================================================
+
+<maui:MauiWinUIApplication
+    x:Class="CIDE.WinUI.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:maui="using:Microsoft.Maui"
+    xmlns:local="using:CIDE.WinUI">
+
+</maui:MauiWinUIApplication>
+
+
+======================================================================
+FILE: Platforms\Windows\App.xaml.cs
+======================================================================
+
+using System.Runtime.Versioning;
+using Microsoft.UI.Xaml;
+namespace CIDE.WinUI;
+[SupportedOSPlatform("windows10.0.22000.0")]
+public sealed partial class App : MauiWinUIApplication
+{
+    public App() => InitializeComponent();
+    protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
+}
+
+
+======================================================================
+FILE: Resources\Styles\Styles.xaml
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- ������� ������� CIDE -->
+    <Color x:Key="BgPrimary">#1E1E1E</Color>
+    <Color x:Key="BgSecondary">#252526</Color>
+    <Color x:Key="TextPrimary">#D4D4D4</Color>
+    <Color x:Key="TextSecondary">#858585</Color>
+    <Color x:Key="Accent">#007ACC</Color>
+    <Color x:Key="BorderColor">#333333</Color>
+
+    <!-- ����� �� ��������� -->
+    <Style TargetType="Page" ApplyToDerivedTypes="True">
+        <Setter Property="BackgroundColor" Value="{StaticResource BgPrimary}" />
+    </Style>
+
+    <Style TargetType="Label">
+        <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
+        <Setter Property="FontFamily" Value="OpenSansRegular" />
+    </Style>
+
+    <Style TargetType="Button">
+        <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="FontFamily" Value="OpenSansRegular" />
+        <Setter Property="VisualStateManager.VisualStateGroups">
+            <VisualStateGroupList>
+                <VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal" />
+                    <VisualState x:Name="PointerOver">
+                        <VisualState.Setters>
+                            <Setter Property="BackgroundColor" Value="#3E3E42" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateGroupList>
+        </Setter>
+    </Style>
+</ResourceDictionary>
+
+
+======================================================================
+FILE: Services\CompileService.cs
+======================================================================
+
+using System.Diagnostics;
+using System.Text;
+
+namespace CIDE.Services;
+
+public static class CompileService
+{
+    public static async Task RunCompilationAsync(string profile, string activeFilePath, string workspacePath, Action<string> onOutput)
+    {
+        onOutput($"[{DateTime.Now:HH:mm:ss}] Запуск профиля: {profile}\n");
+
+        if (profile == "Один файл (C/C++)")
+        {
+            if (string.IsNullOrEmpty(activeFilePath)
+                || (!activeFilePath.EndsWith(".c", StringComparison.OrdinalIgnoreCase)
+                    && !activeFilePath.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase)))
+            {
+                onOutput("Ошибка: Выберите файл .c или .cpp для компиляции.\n");
+                return;
+            }
+
+            var compiler = activeFilePath.EndsWith(".c", StringComparison.OrdinalIgnoreCase) ? "gcc.exe" : "g++.exe";
+            var compilerPath = Path.Combine(ToolchainService.MinGWDir, "bin", compiler);
+
+            if (!File.Exists(compilerPath))
+            {
+                onOutput($"Ошибка: Компилятор {compiler} не найден. Проверьте установку.\n");
+                compilerPath = compiler;
+            }
+
+            var outputExe = Path.Combine(Path.GetDirectoryName(activeFilePath) ?? workspacePath, Path.GetFileNameWithoutExtension(activeFilePath) + ".exe");
+
+            var args = $"-Wall -g \"{activeFilePath}\" -o \"{outputExe}\"";
+            onOutput($"$ {compilerPath} {args}\n");
+
+            var result = await ExecuteProcessAsync(compilerPath, args, Path.GetDirectoryName(activeFilePath) ?? workspacePath, onOutput);
+            if (result == 0 && File.Exists(outputExe))
+            {
+                onOutput($"\n[{DateTime.Now:HH:mm:ss}] Успешно собрано. Запуск {outputExe}...\n");
+                _ = await ExecuteProcessAsync(outputExe, "", Path.GetDirectoryName(activeFilePath) ?? workspacePath, onOutput);
+            }
+        }
+        else if (profile == "Makefile (C/C++)")
+        {
+            var makePath = Path.Combine(ToolchainService.MinGWDir, "bin", "mingw32-make.exe");
+            onOutput($"$ {makePath}\n");
+            _ = await ExecuteProcessAsync(makePath, "", workspacePath, onOutput);
+        }
+        else if (profile == "Проект C# (.slnx/.csproj)")
+        {
+            onOutput("$ dotnet run\n");
+            _ = await ExecuteProcessAsync("dotnet", "run", workspacePath, onOutput);
+        }
+        else
+        {
+            onOutput("Профиль не поддерживается.\n");
+        }
+    }
+
+    private static async Task<int> ExecuteProcessAsync(string fileName, string args, string workingDir, Action<string> onOutput)
+    {
+        try
+        {
+            using var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = fileName,
+                    Arguments = args,
+                    WorkingDirectory = workingDir,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    StandardOutputEncoding = Encoding.UTF8,
+                    StandardErrorEncoding = Encoding.UTF8
+                }
+            };
+
+            process.OutputDataReceived += (s, e) => { if (e.Data != null) { onOutput(e.Data + "\n"); } };
+            process.ErrorDataReceived += (s, e) => { if (e.Data != null) { onOutput(e.Data + "\n"); } };
+
+            _ = process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            await process.WaitForExitAsync();
+            onOutput($"\nПроцесс завершился с кодом {process.ExitCode}.\n");
+            return process.ExitCode;
+        }
+        catch (Exception ex)
+        {
+            onOutput($"\nОшибка запуска процесса: {ex.Message}\n");
+            return -1;
+        }
+    }
+}
+
+
+======================================================================
+FILE: Services\SshWorkspaceService.cs
+======================================================================
+
+using System.Text;
+using Renci.SshNet;
+
+namespace CIDE.Services;
+
+public sealed partial class SshWorkspaceService(string host, string username, string password) : IDisposable
+{
+    private SftpClient? _sftpClient;
+    private SshClient? _sshClient;
+    public static string RemoteCacheDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CIDE", "remote_cache");
+
+    public void Connect()
+    {
+        _sftpClient = new SftpClient(host, username, password);
+        _sftpClient.Connect();
+
+        _sshClient = new SshClient(host, username, password);
+        _sshClient.Connect();
+    }
+
+    public void Disconnect()
+    {
+        _sftpClient?.Disconnect();
+        _sshClient?.Disconnect();
+    }
+
+    public void Dispose()
+    {
+        _sftpClient?.Dispose();
+        _sshClient?.Dispose();
+    }
+
+    public async Task<string> ReadRemoteFileAsync(string remotePath)
+    {
+        if (_sftpClient == null || !_sftpClient.IsConnected)
+        {
+            Connect();
+        }
+        using var ms = new MemoryStream();
+        await Task.Run(() => _sftpClient!.DownloadFile(remotePath, ms));
+
+        ms.Position = 0;
+        using var reader = new StreamReader(ms, Encoding.UTF8);
+        return await reader.ReadToEndAsync();
+    }
+
+    public async Task SaveRemoteFileAsync(string remotePath, string content)
+    {
+        if (_sftpClient == null || !_sftpClient.IsConnected)
+        {
+            Connect();
+        }
+
+        using var ms = new MemoryStream(Encoding.UTF8.GetBytes(content));
+        await Task.Run(() => _sftpClient!.UploadFile(ms, remotePath, true));
+    }
+
+    public string ExecuteCommand(string command)
+    {
+        if (_sshClient == null || !_sshClient.IsConnected)
+        {
+            Connect();
+        }
+
+        var cmd = _sshClient!.CreateCommand(command);
+        return cmd.Execute();
+    }
+}
+
+
+======================================================================
+FILE: Services\ToolchainService.cs
+======================================================================
+
+using System.Diagnostics;
+using System.IO.Compression;
+
+namespace CIDE.Services;
+
+public static class ToolchainService
+{
+    public static string ToolchainDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CIDE", "toolchains");
+    public static string MinGWDir => Path.Combine(ToolchainDir, "mingw64");
+    public static string GppPath => Path.Combine(MinGWDir, "bin", "g++.exe");
+
+    public static bool IsGccInstalled => File.Exists(GppPath);
+
+    public static async Task InstallMinGWAsync(Action<string> onProgress)
+    {
+        if (IsGccInstalled)
+        {
+            onProgress("Компилятор уже установлен.");
+            return;
+        }
+
+        _ = Directory.CreateDirectory(ToolchainDir);
+        var zipPath = Path.Combine(ToolchainDir, "mingw.zip");
+
+        onProgress("Скачивание компилятора MinGW (C/C++)...");
+        var downloadUrl = "https://github.com/brechtsanders/winlibs_mingw/releases/download/13.2.0-16.0.6-11.0.1-msvcrt-r2/winlibs-x86_64-posix-seh-gcc-13.2.0-mingw-w64msvcrt-11.0.1-r2.zip";
+
+        using (var client = new HttpClient())
+        {
+            try
+            {
+                var response = await client.GetAsync(downloadUrl);
+                _ = response.EnsureSuccessStatusCode();
+                using var fs = new FileStream(zipPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                await response.Content.CopyToAsync(fs);
+            }
+            catch (Exception ex)
+            {
+                onProgress($"Ошибка скачивания: {ex.Message}");
+                return;
+            }
+        }
+
+        onProgress("Распаковка компилятора (это займет пару минут)...");
+        await Task.Run(() =>
+        {
+            if (Directory.Exists(MinGWDir))
+            {
+                Directory.Delete(MinGWDir, true);
+            }
+
+            ZipFile.ExtractToDirectory(zipPath, ToolchainDir);
+        });
+
+        if (File.Exists(zipPath))
+        {
+            File.Delete(zipPath);
+        }
+
+        onProgress("Установка компилятора завершена!");
+    }
+}
+
+
+======================================================================
+FILE: Services\WorkspaceService.cs
+======================================================================
+
+using System.Collections.ObjectModel;
+using System.Text.Json;
+using CIDE.Models;
+using Window = Microsoft.UI.Xaml.Window;
+
+namespace CIDE.Services;
+
+public static class WorkspaceService
+{
+    public static ObservableCollection<RecentEntry> Recents { get; } = [];
+
+    private static readonly string t_recentsFile = Path.Combine(FileSystem.AppDataDirectory, "recents.json");
+    private static IntPtr GetParentWindowHandle()
+    {
+        if (Application.Current is not App app)
+        {
+            return IntPtr.Zero;
+        }
+        var platformView = app.Windows.Count > 0 ? app.Windows[0]?.Handler?.PlatformView : null;
+        return platformView is Window window
+            ? WinRT.Interop.WindowNative.GetWindowHandle(window)
+            : IntPtr.Zero;
+    }
+    public static async Task<string?> PickFolderAsync()
+    {
+        var path = await MainThread.InvokeOnMainThreadAsync(() => Win32FileDialog.ShowFolderPicker(GetParentWindowHandle()));
+        if (!string.IsNullOrEmpty(path))
+        {
+            await AddRecentAsync(path, "folder");
+            return path;
+        }
+        return null;
+    }
+    public static async Task<string?> PickSolutionAsync()
+    {
+        var path = await MainThread.InvokeOnMainThreadAsync(() => Win32FileDialog.ShowFilePicker(GetParentWindowHandle(), "Выберите решение", "Файлы решений (*.sln, *.slnx)", "*.sln;*.slnx"));
+        if (!string.IsNullOrEmpty(path))
+        {
+            await AddRecentAsync(path, "solution");
+            return Path.GetDirectoryName(path);
+        }
+        return null;
+    }
+
+    public static async Task<string> ReadFileAsync(string path) => await File.ReadAllTextAsync(path);
+    public static async Task SaveFileAsync(string path, string content) => await File.WriteAllTextAsync(path, content);
+
+    public static void LoadRecents()
+    {
+        if (File.Exists(t_recentsFile))
+        {
+            var list = JsonSerializer.Deserialize(File.ReadAllText(t_recentsFile), CideJsonContext.Default.ListRecentEntry);
+            if (list != null)
+            {
+                foreach (var r in list)
+                {
+                    Recents.Add(r);
+                }
+            }
+        }
+    }
+    private static async Task AddRecentAsync(string path, string type)
+    {
+        var existing = Recents.FirstOrDefault(r => r.Path == path);
+        if (existing is not null)
+        {
+            _ = Recents.Remove(existing);
+        }
+        Recents.Insert(0, new RecentEntry { Path = path, Type = type, LastOpened = DateTime.Now });
+        var json = JsonSerializer.Serialize([.. Recents], CideJsonContext.Default.ListRecentEntry);
+        await File.WriteAllTextAsync(t_recentsFile, json);
+    }
+
+    public static FileNode BuildFolderTree(string rootPath)
+    {
+        var root = new FileNode { Name = Path.GetFileName(rootPath), FullPath = rootPath, Kind = FileNodeKind.Folder, IsExpanded = true, Depth = 0, IsPopulated = true };
+        FillChildren(root, new DirectoryInfo(rootPath), 1);
+        return root;
+    }
+
+    public static void FillChildren(FileNode parent, DirectoryInfo dir, int depth)
+    {
+        if (!dir.Exists)
+        {
+            return;
+        }
+
+        parent.Children.Clear();
+        foreach (var sub in dir.GetDirectories().Where(d => !d.Name.StartsWith('.') && d.Name != "bin" && d.Name != "obj").OrderBy(d => d.Name))
+        {
+            var node = new FileNode { Name = sub.Name, FullPath = sub.FullName, Kind = FileNodeKind.Folder, Depth = depth, IsPopulated = false };
+            node.Children.Add(new FileNode { Name = "dummy", Kind = FileNodeKind.File });
+            parent.Children.Add(node);
+        }
+
+        foreach (var f in dir.GetFiles().OrderBy(f => f.Name))
+        {
+            parent.Children.Add(new FileNode { Name = f.Name, FullPath = f.FullName, Kind = FileNodeKind.File, Depth = depth });
+        }
+
+        parent.IsPopulated = true;
+    }
+}
+
+
+======================================================================
+FILE: App.xaml
+======================================================================
+
+<?xml version = "1.0" encoding = "UTF-8" ?>
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:CIDE"
+             x:ClassModifier="internal"
+             x:Class="CIDE.App">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
+
+
+======================================================================
+FILE: App.xaml.cs
+======================================================================
+
+using Microsoft.Extensions.DependencyInjection;
+namespace CIDE;
+internal sealed partial class App : Application
+{
+    public App() => InitializeComponent();
+    protected override Window CreateWindow(IActivationState? activationState)
+    {
+        var window = new Window(new AppShell());
+#if WINDOWS
+        window.Created += (s, e) =>
+        {
+            var nativeWindow = window.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
+            if (nativeWindow != null)
+            {
+                var appWindow = nativeWindow.AppWindow;
+                appWindow.Title = "CIDE";
+                if (Microsoft.UI.Windowing.AppWindowTitleBar.IsCustomizationSupported())
+                {
+                    var titleBar = appWindow.TitleBar;
+                    var darkColor = Microsoft.UI.ColorHelper.FromArgb(255, 9, 7, 20);
+                    var hoverColor = Microsoft.UI.ColorHelper.FromArgb(255, 30, 26, 50);
+                    var pressColor = Microsoft.UI.ColorHelper.FromArgb(255, 20, 16, 35);
+                    var activeTextColor = Microsoft.UI.ColorHelper.FromArgb(255, 255, 255, 255);
+                    var inactiveTextColor = Microsoft.UI.ColorHelper.FromArgb(255, 128, 128, 128);
+                    titleBar.BackgroundColor = darkColor;
+                    titleBar.ForegroundColor = activeTextColor;
+                    titleBar.ButtonBackgroundColor = darkColor;
+                    titleBar.ButtonForegroundColor = activeTextColor;
+                    titleBar.ButtonHoverBackgroundColor = hoverColor;
+                    titleBar.ButtonHoverForegroundColor = activeTextColor;
+                    titleBar.ButtonPressedBackgroundColor = pressColor;
+                    titleBar.ButtonPressedForegroundColor = activeTextColor;
+                    titleBar.ButtonInactiveBackgroundColor = darkColor;
+                    titleBar.ButtonInactiveForegroundColor = inactiveTextColor;
+                    titleBar.InactiveBackgroundColor = darkColor;
+                    titleBar.InactiveForegroundColor = inactiveTextColor;
+                }
+            }
+        };
+#endif
+        return window;
+    }
+}
+
+
+======================================================================
+FILE: AppShell.xaml
+======================================================================
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:pages="clr-namespace:CIDE.Pages"
+       x:Class="CIDE.AppShell"
+       FlyoutBackgroundColor="#252526"
+       x:ClassModifier="internal"
+       FlyoutBehavior="Flyout">
+
+    <!-- Стартовый экран -->
+    <FlyoutItem Title="⌂  Стартовое окно">
+        <ShellContent Route="WelcomePage" ContentTemplate="{DataTemplate pages:WelcomePage}" />
+    </FlyoutItem>
+
+    <!-- Сама IDE (скрыта из бокового меню, мы переходим туда программно с передачей пути) -->
+    <ShellContent Route="MainPage" ContentTemplate="{DataTemplate pages:MainPage}" FlyoutItemIsVisible="False" />
+
+    <!-- Настройки -->
+    <FlyoutItem Title="⚙  Настройки среды">
+        <ShellContent Route="SettingsPage" ContentTemplate="{DataTemplate pages:SettingsPage}" />
+    </FlyoutItem>
+
+</Shell>
+
+
+======================================================================
+FILE: AppShell.xaml.cs
+======================================================================
+
+namespace CIDE;
+internal sealed partial class AppShell : Shell
+{
+    public AppShell()
+    {
+        InitializeComponent();
+        Routing.RegisterRoute("MainPage", typeof(MainPage));
+    }
+}
+
+
+======================================================================
+FILE: CIDE.csproj
+======================================================================
+
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- Строго Windows 11 -->
+    <TargetFramework>net10.0-windows10.0.22000.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.22000.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.22000.0</SupportedOSPlatformVersion>
+
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>CIDE</RootNamespace>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Оптимизация XAML -->
+    <MauiXamlInflator>SourceGen</MauiXamlInflator>
+
+    <ApplicationTitle>CIDE</ApplicationTitle>
+    <ApplicationId>com.core.cide</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+
+    <!-- Режим Unpackaged (работает как обычный .exe) -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Иконка и Splash Screen (в темном цвете IDE) -->
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#1E1E1E" />
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#1E1E1E" BaseSize="128,128" />
+
+    <!-- Ассеты -->
+    <MauiFont Include="Resources\Fonts\*" />
+    <MauiImage Include="Resources\Images\*" />
+    <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Пустые папки для сохранения структуры -->
+    <Folder Include="Resources\Images\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Maui" Version="14.1.1" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.60" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.60" />
+    <PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="10.0.60" />
+    <PackageReference Include="SSH.NET" Version="2025.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="CIDE.Tests\**" />
+    <None Include="CIDE.Tests\**" />
+  </ItemGroup>
+</Project>
+
+======================================================================
+FILE: GlobalUsings.cs
+======================================================================
+
+global using System;
+global using System.Collections.ObjectModel;
+global using System.IO;
+global using System.Linq;
+global using System.Threading.Tasks;
+global using CIDE.Helpers;
+global using CIDE.Models;
+global using CIDE.PageModels;
+global using CIDE.Pages;
+global using CIDE.Services;
+global using CommunityToolkit.Mvvm.ComponentModel;
+global using CommunityToolkit.Mvvm.Input;
+global using Microsoft.Maui;
+global using Microsoft.Maui.Controls;
+global using Microsoft.Maui.Hosting;
+[assembly: System.Runtime.Versioning.SupportedOSPlatform("windows10.0.22000.0")]
+
+
+======================================================================
+FILE: MauiProgram.cs
+======================================================================
+
+using System.Runtime.Versioning;
+using CIDE.PageModels;
+using CIDE.Pages;
+using CommunityToolkit.Maui;
+using Windows.UI.ApplicationSettings;
+using Microsoft.Extensions.Logging;
+namespace CIDE;
+[SupportedOSPlatform("windows10.0.22000.0")]
+internal static class MauiProgram
+{
+    public static MauiApp CreateMauiApp()
+    {
+        var builder = MauiApp.CreateBuilder();
+        _ = builder
+            .UseMauiApp<App>()
+            .UseMauiCommunityToolkit()
+            .ConfigureFonts(fonts =>
+            {
+                _ = fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+                _ = fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+            });
+        _ = builder.Services.AddMauiBlazorWebView();
+        _ = builder.Services.AddTransient<WelcomePage>();
+        _ = builder.Services.AddTransient<WelcomePageModel>();
+        _ = builder.Services.AddTransient<SettingsPage>();
+        _ = builder.Services.AddTransient<MainPage>();
+        _ = builder.Services.AddTransient<MainPageModel>();
+        return builder.Build();
+    }
+}
+

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -17,16 +17,17 @@
             height: 100%;
         }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+    <script src="monaco/vs/loader.js"></script>
 </head>
 <body>
     <div id="container"></div>
     <script>
-        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
-        let editor;
+        require.config({ paths: { 'vs': 'monaco/vs' } });
 
-        require(['vs/editor/editor.main'], function() {
-            editor = monaco.editor.create(document.getElementById('container'), {
+        window.editor = null;
+
+        require(['vs/editor/editor.main'], function () {
+            window.editor = monaco.editor.create(document.getElementById('container'), {
                 value: '// CIDE (C-Family IDE) Initialized\n// C, C++, C# Ready...',
                 language: 'csharp',
                 theme: 'vs-dark',
@@ -35,19 +36,31 @@
                 fontFamily: 'Consolas',
                 fontSize: 14
             });
+
+            window.editor.onDidChangeModelContent(function (e) {
+                if (!window.isUpdatingFromCSharp) {
+                    window.location.href = "cide://modified";
+                }
+            });
+
+            window.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function () {
+                window.location.href = "cide://save";
+            });
         });
 
-        // Функция вызывается из C# MAUI
         function setEditorText(text, lang) {
-            if(editor) {
-                monaco.editor.setModelLanguage(editor.getModel(), lang);
-                editor.setValue(decodeURIComponent(text));
+            if (window.editor) {
+                window.isUpdatingFromCSharp = true;
+                monaco.editor.setModelLanguage(window.editor.getModel(), lang);
+
+                window.editor.setValue(text);
+
+                window.isUpdatingFromCSharp = false;
             }
         }
-
-        // Функция вызывается из C# MAUI при сохранении
+        
         function getEditorText() {
-            return editor ? editor.getValue() : '';
+            return window.editor ? window.editor.getValue() : '';
         }
     </script>
 </body>

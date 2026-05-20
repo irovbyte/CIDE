@@ -1,14 +1,26 @@
+using System.Collections.ObjectModel;
 using CIDE.Models;
 using CIDE.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using System.Collections.ObjectModel;
+
 namespace CIDE.PageModels;
-internal partial class WelcomePageModel : ObservableObject
+
+internal sealed partial class WelcomePageModel : ObservableObject
 {
     public static ObservableCollection<RecentEntry> Recents => WorkspaceService.Recents;
+    [ObservableProperty]
+    public partial string ToolchainStatus { get; set; } = "Проверка компиляторов...";
+
     public WelcomePageModel()
-    => WorkspaceService.LoadRecents();
+    {
+        WorkspaceService.LoadRecents();
+        _ = CheckToolchainAsync();
+    }
+
+    private async Task CheckToolchainAsync() =>
+        await ToolchainService.InstallMinGWAsync(msg => MainThread.BeginInvokeOnMainThread(() => ToolchainStatus = msg));
+
     [RelayCommand]
     public static async Task OpenFolderAsync()
     {
@@ -18,6 +30,7 @@ internal partial class WelcomePageModel : ObservableObject
             await GoToWorkspaceAsync(path);
         }
     }
+
     [RelayCommand]
     public static async Task OpenSolutionAsync()
     {
@@ -27,6 +40,7 @@ internal partial class WelcomePageModel : ObservableObject
             await GoToWorkspaceAsync(path);
         }
     }
+
     [RelayCommand]
     public static async Task OpenRecentAsync(RecentEntry? entry)
     {
@@ -35,6 +49,7 @@ internal partial class WelcomePageModel : ObservableObject
             await GoToWorkspaceAsync(entry.Path);
         }
     }
-    private static async Task GoToWorkspaceAsync(string path)
-    => await Shell.Current.GoToAsync($"MainPage?path={Uri.EscapeDataString(path)}");
+
+    private static async Task GoToWorkspaceAsync(string path) =>
+        await Shell.Current.GoToAsync($"MainPage?path={Uri.EscapeDataString(path)}");
 }

@@ -1,4 +1,5 @@
 namespace CIDE.Helpers;
+
 internal static class AnimationHelper
 {
     public static async Task WaveClickAsync(this View clicked, params View[] neighbors)
