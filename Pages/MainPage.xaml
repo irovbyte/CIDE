@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pm="clr-namespace:CIDE.PageModels"
+             xmlns:m="clr-namespace:CIDE.Models"
+             xmlns:helpers="clr-namespace:CIDE.Helpers"
+             x:Class="CIDE.Pages.MainPage"
+             Shell.NavBarIsVisible="False"
+             x:ClassModifier="internal"
+             BackgroundColor="#1E1E1E">
+
+    <ContentPage.Resources>
+        <helpers:DepthToMarginConverter x:Key="DepthConverter"/>
+    </ContentPage.Resources>
+
+    <!-- IDE Workspace -->
+    <Grid RowDefinitions="40, *, 24">
+
+        <!-- Toolbar -->
+        <Border Grid.Row="0" BackgroundColor="#2D2D2D" Stroke="#333" StrokeThickness="1">
+            <HorizontalStackLayout Spacing="5" Padding="10,0" VerticalOptions="Center">
+                <Button Text="⌂ Назад" Command="{Binding GoBackCommand}" BackgroundColor="Transparent" TextColor="#CCC" Padding="10,5"/>
+                <BoxView WidthRequest="1" Color="#333" Margin="5,8"/>
+                <Button Text="💾 Сохранить" Command="{Binding SaveActiveFileCommand}" BackgroundColor="Transparent" TextColor="#CCC" Padding="10,5"/>
+            </HorizontalStackLayout>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="260, 2, *">
+            <!-- Обозреватель -->
+            <Border Grid.Column="0" BackgroundColor="#252526" Stroke="#333" StrokeThickness="1">
+                <Grid RowDefinitions="35, *">
+                    <Label Grid.Row="0" Text="{Binding ExplorerTitle}" TextColor="Gray" FontSize="11" Margin="15,10,0,0" FontAttributes="Bold"/>
+
+                    <CollectionView Grid.Row="1" ItemsSource="{Binding FlatTree}" SelectionMode="Single" SelectionChanged="OnTreeSelectionChanged">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="m:FileNode">
+                                <Grid ColumnDefinitions="15, 20, *" Margin="{Binding Depth, Converter={StaticResource DepthConverter}}" Padding="0,5">
+                                    <Label Grid.Column="0" Text="{Binding Glyph}" TextColor="{Binding GlyphColor}" FontSize="12" VerticalOptions="Center"/>
+                                    <Label Grid.Column="1" Text="{Binding IconText}" TextColor="{Binding IconColor}" FontSize="10" FontAttributes="Bold" VerticalOptions="Center" HorizontalOptions="Center"/>
+                                    <Label Grid.Column="2" Text="{Binding Name}" TextColor="#CCC" FontSize="13" VerticalOptions="Center" LineBreakMode="TailTruncation"/>
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </Grid>
+            </Border>
+
+            <BoxView Grid.Column="1" Color="#333"/>
+
+            <!-- Область редактора -->
+            <Grid Grid.Column="2" RowDefinitions="35, *">
+
+                <!-- Панель вкладок -->
+                <Border Grid.Row="0" BackgroundColor="#2D2D2D" Stroke="#333" StrokeThickness="1">
+                    <ScrollView Orientation="Horizontal">
+                        <HorizontalStackLayout BindableLayout.ItemsSource="{Binding Tabs}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="m:EditorTab">
+                                    <Border BackgroundColor="{Binding BackgroundBrush}" Stroke="#333" StrokeThickness="1" Padding="15,0,5,0">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding BindingContext.ActivateTabCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" CommandParameter="{Binding}"/>
+                                        </Border.GestureRecognizers>
+                                        <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                                            <Label Text="{Binding DisplayName}" TextColor="#CCC" VerticalOptions="Center"/>
+                                            <Button Text="✕" WidthRequest="30" HeightRequest="30" Padding="0" BackgroundColor="Transparent" TextColor="#CCC"
+                                                    Command="{Binding BindingContext.CloseTabCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" CommandParameter="{Binding}"/>
+                                        </HorizontalStackLayout>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </HorizontalStackLayout>
+                    </ScrollView>
+                </Border>
+
+                <!-- Заглушка (когда нет открытых файлов) -->
+                <VerticalStackLayout Grid.Row="1" VerticalOptions="Center" HorizontalOptions="Center" Spacing="15">
+                    <VerticalStackLayout.Triggers>
+                        <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding IsEditorVisible}" Value="True">
+                            <Setter Property="IsVisible" Value="False" />
+                        </DataTrigger>
+                    </VerticalStackLayout.Triggers>
+
+                    <Label Text="CIDE" FontSize="80" TextColor="#252526" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Label Text="Выберите файл в обозревателе для редактирования" TextColor="#333333" FontSize="14" HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+
+                <!-- Движок Monaco (WebView) -->
+                <WebView Grid.Row="1" 
+                         x:Name="MonacoView"
+                         IsVisible="{Binding IsEditorVisible}"
+                         Margin="0"/>
+            </Grid>
+        </Grid>
+
+        <!-- StatusBar -->
+        <Grid Grid.Row="2" BackgroundColor="#007ACC" Padding="15,0">
+            <Label Text="{Binding StatusText}" TextColor="White" FontSize="12" VerticalOptions="Center"/>
+        </Grid>
+    </Grid>
+</ContentPage>

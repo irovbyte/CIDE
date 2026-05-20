@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:pages="clr-namespace:CIDE.Pages"
+       x:Class="CIDE.AppShell"
+       FlyoutBackgroundColor="#252526"
+       x:ClassModifier="internal"
+       FlyoutBehavior="Flyout">
+
+    <!-- Стартовый экран -->
+    <FlyoutItem Title="⌂  Стартовое окно">
+        <ShellContent Route="WelcomePage" ContentTemplate="{DataTemplate pages:WelcomePage}" />
+    </FlyoutItem>
+
+    <!-- Сама IDE (скрыта из бокового меню, мы переходим туда программно с передачей пути) -->
+    <ShellContent Route="MainPage" ContentTemplate="{DataTemplate pages:MainPage}" FlyoutItemIsVisible="False" />
+
+    <!-- Настройки -->
+    <FlyoutItem Title="⚙  Настройки среды">
+        <ShellContent Route="SettingsPage" ContentTemplate="{DataTemplate pages:SettingsPage}" />
+    </FlyoutItem>
+
+</Shell>

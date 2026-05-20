@@ -1,0 +1,1122 @@
+﻿=== UNI-SENTINEL TOTAL DUMP: CIDE ===
+Date: 05/16/2026 20:45:48
+Files Count: 27
+Root: C:\Users\irovb\Documents\code\CIDE
+
+
+========================================
+FILE: App.xaml
+========================================
+<?xml version = "1.0" encoding = "UTF-8" ?>
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:CIDE"
+             x:ClassModifier="internal"
+             x:Class="CIDE.App">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
+
+
+========================================
+FILE: App.xaml.cs
+========================================
+using Microsoft.Extensions.DependencyInjection;
+namespace CIDE;
+internal partial class App : Application
+{
+    public App()
+    {
+        InitializeComponent();
+    }
+    protected override Window CreateWindow(IActivationState? activationState)
+    {
+        return new Window(new AppShell());
+    }
+}
+
+
+========================================
+FILE: AppShell.xaml
+========================================
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:pages="clr-namespace:CIDE.Pages"
+       x:Class="CIDE.AppShell"
+       FlyoutBackgroundColor="#252526"
+       x:ClassModifier="internal"
+       FlyoutBehavior="Flyout">
+
+    <!-- Стартовый экран -->
+    <FlyoutItem Title="⌂  Стартовое окно">
+        <ShellContent Route="WelcomePage" ContentTemplate="{DataTemplate pages:WelcomePage}" />
+    </FlyoutItem>
+
+    <!-- Сама IDE (скрыта из бокового меню, мы переходим туда программно с передачей пути) -->
+    <ShellContent Route="MainPage" ContentTemplate="{DataTemplate pages:MainPage}" FlyoutItemIsVisible="False" />
+
+    <!-- Настройки -->
+    <FlyoutItem Title="⚙  Настройки среды">
+        <ShellContent Route="SettingsPage" ContentTemplate="{DataTemplate pages:SettingsPage}" />
+    </FlyoutItem>
+
+</Shell>
+
+
+========================================
+FILE: AppShell.xaml.cs
+========================================
+namespace CIDE;
+internal partial class AppShell : Shell
+{
+    public AppShell()
+    {
+        InitializeComponent();
+        Routing.RegisterRoute("MainPage", typeof(MainPage));
+    }
+}
+
+
+========================================
+FILE: CIDE.csproj
+========================================
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- Строго Windows 11 -->
+    <TargetFramework>net10.0-windows10.0.22000.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.22000.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.22000.0</SupportedOSPlatformVersion>
+
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>CIDE</RootNamespace>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Оптимизация XAML -->
+    <MauiXamlInflator>SourceGen</MauiXamlInflator>
+
+    <ApplicationTitle>CIDE</ApplicationTitle>
+    <ApplicationId>com.core.cide</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+
+    <!-- Режим Unpackaged (работает как обычный .exe) -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Иконка и Splash Screen (в темном цвете IDE) -->
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#1E1E1E" />
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#1E1E1E" BaseSize="128,128" />
+
+    <!-- Ассеты -->
+    <MauiFont Include="Resources\Fonts\*" />
+    <MauiImage Include="Resources\Images\*" />
+    <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Пустые папки для сохранения структуры -->
+    <Folder Include="Resources\Images\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Maui" Version="14.1.1" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.60" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.60" />
+    <PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="10.0.60" />
+  </ItemGroup>
+
+
+</Project>
+
+========================================
+FILE: CIDE.slnx
+========================================
+<Solution>
+  <Project Path="CIDE.csproj" />
+</Solution>
+
+
+========================================
+FILE: GlobalUsings.cs
+========================================
+global using System;
+global using System.IO;
+global using System.Linq;
+global using System.Threading.Tasks;
+global using System.Collections.ObjectModel;
+global using Microsoft.Maui;
+global using Microsoft.Maui.Controls;
+global using Microsoft.Maui.Hosting;
+global using CommunityToolkit.Mvvm.ComponentModel;
+global using CommunityToolkit.Mvvm.Input;
+global using CIDE.Models;
+global using CIDE.Services;
+global using CIDE.PageModels;
+global using CIDE.Pages;
+global using CIDE.Helpers;
+[assembly: System.Runtime.Versioning.SupportedOSPlatform("windows10.0.22000.0")]
+
+
+========================================
+FILE: MauiProgram.cs
+========================================
+using CIDE.PageModels;
+using CIDE.Pages;
+using CommunityToolkit.Maui;
+using Windows.UI.ApplicationSettings;
+namespace CIDE;
+internal static class MauiProgram
+{
+    public static MauiApp CreateMauiApp()
+    {
+        var builder = MauiApp.CreateBuilder();
+        builder
+            .UseMauiApp<App>()
+            .UseMauiCommunityToolkit()
+            .ConfigureFonts(fonts =>
+            {
+                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+                fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+            });
+        builder.Services.AddMauiBlazorWebView();
+        builder.Services.AddTransient<WelcomePage>();
+        builder.Services.AddTransient<WelcomePageModel>();
+        builder.Services.AddTransient<SettingsPage>();
+        builder.Services.AddTransient<MainPage>();
+        builder.Services.AddTransient<MainPageModel>();
+        return builder.Build();
+    }
+}
+
+
+========================================
+FILE: Helpers\AnimationHelper.cs
+========================================
+namespace CIDE.Helpers;
+internal static class AnimationHelper
+{
+    public static async Task WaveClickAsync(this View clicked, params View[] neighbors)
+    {
+        var clickTask = ClickPhysicsAsync(clicked);
+        var neighborTasks = neighbors.Select(async (n, index) =>
+        {
+            await Task.Delay(50 * (index + 1));
+            await NudgeAsync(n);
+        });
+        await Task.WhenAll(new[] { clickTask }.Concat(neighborTasks));
+    }
+    private static async Task ClickPhysicsAsync(View view)
+    {
+        _ = await Task.WhenAll(view.ScaleToAsync(0.85, 100, Easing.CubicOut), view.FadeToAsync(0.8, 100));
+        _ = await Task.WhenAll(view.ScaleToAsync(1.0, 300, Easing.SpringOut), view.FadeToAsync(1.0, 150));
+    }
+    private static async Task NudgeAsync(View view)
+    {
+        _ = await Task.WhenAll(view.TranslateToAsync(15, 0, 120, Easing.CubicOut), view.ScaleToAsync(0.95, 120, Easing.CubicOut));
+        _ = await Task.WhenAll(view.TranslateToAsync(0, 0, 300, Easing.SpringOut), view.ScaleToAsync(1.0, 300, Easing.SpringOut));
+    }
+    public static async Task FadeInWithShiftAsync(this View view, uint duration = 500)
+    {
+        view.Opacity = 0;
+        view.TranslationY = 30;
+        view.IsVisible = true;
+        _ = await Task.WhenAll(view.FadeToAsync(1, duration, Easing.CubicOut), view.TranslateToAsync(0, 0, duration, Easing.CubicOut));
+    }
+}
+
+
+========================================
+FILE: Helpers\Converters.cs
+========================================
+using System.Globalization;
+namespace CIDE.Helpers;
+internal class DepthToMarginConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        new Thickness((value is int d ? d : 0) * (16 + 5), 0, 5, 0);
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => 0;
+}
+
+
+========================================
+FILE: Models\Models.cs
+========================================
+using System.Collections.ObjectModel;
+using System.Text.Json.Serialization;
+using CommunityToolkit.Mvvm.ComponentModel;
+namespace CIDE.Models;
+public enum FileNodeKind { Solution, Project, Folder, File }
+public partial class FileNode : ObservableObject
+{
+    public string Name { get; set; } = "";
+    public string FullPath { get; set; } = "";
+    public FileNodeKind Kind { get; set; }
+    public ObservableCollection<FileNode> Children { get; set; } = [];
+    [ObservableProperty]
+    public partial bool IsExpanded { get; set; }
+    public int Depth { get; set; }
+    public string Glyph => Kind switch
+    {
+        FileNodeKind.Solution => "⬡",
+        FileNodeKind.Project => "◈",
+        FileNodeKind.Folder => IsExpanded ? "▾" : "▸",
+        FileNodeKind.File => "",
+        _ => ""
+    };
+    private static readonly Dictionary<FileNodeKind, string> t_glyphColors = new()
+    {
+        { FileNodeKind.Solution, "#C586C0" },
+        { FileNodeKind.Project, "#4EC9B0" },
+        { FileNodeKind.Folder, "#E8C56D" }
+    };
+    public string GlyphColor => t_glyphColors.GetValueOrDefault(Kind, "Transparent");
+    public string IconText => Kind != FileNodeKind.File ? "" : Path.GetExtension(Name).ToLowerInvariant() switch
+    {
+        ".cs" => "C#",
+        ".csproj" => "⚙",
+        ".xaml" => "⊡",
+        ".json" => "{}",
+        ".xml" => "</>",
+        ".md" => "M↓",
+        ".txt" => "T",
+        ".slnx" => "◈",
+        _ => "·"
+    };
+    public string IconColor => Kind != FileNodeKind.File ? "#858585" : Path.GetExtension(Name).ToLowerInvariant() switch
+    {
+        ".cs" => "#9CDCFE",
+        ".csproj" => "#4EC9B0",
+        ".xaml" or ".json" => "#CE9178",
+        ".md" => "#D4D4D4",
+        ".slnx" => "#C586C0",
+        _ => "#858585"
+    };
+    partial void OnIsExpandedChanged(bool value) => OnPropertyChanged(nameof(Glyph));
+}
+public partial class EditorTab : ObservableObject
+{
+    public string FilePath { get; set; } = "";
+    [ObservableProperty]
+    public partial string Content { get; set; } = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayName))]
+    public partial bool IsModified { get; set; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BackgroundBrush))]
+    public partial bool IsActive { get; set; }
+    public string FileName => Path.GetFileName(FilePath);
+    public string DisplayName => IsModified ? $"● {FileName}" : FileName;
+    public string BackgroundBrush => IsActive ? "#1E1E1E" : "Transparent";
+}
+public class RecentEntry
+{
+    public string Path { get; set; } = "";
+    public string Type { get; set; } = "folder";
+    public DateTime LastOpened { get; set; } = DateTime.Now;
+    public string Name => System.IO.Path.GetFileName(Path.TrimEnd('\\', '/'));
+    public string Icon => Type == "solution" ? "⬡" : "▸";
+}
+[JsonSerializable(typeof(List<RecentEntry>))]
+[JsonSerializable(typeof(string))]
+internal sealed partial class CideJsonContext : JsonSerializerContext
+{
+}
+
+
+========================================
+FILE: PageModels\MainPageModel.cs
+========================================
+namespace CIDE.PageModels;
+[QueryProperty(nameof(WorkspacePath), "path")]
+internal partial class MainPageModel : ObservableObject
+{
+    [ObservableProperty]
+    private ObservableCollection<FileNode> _flatTree = [];
+    [ObservableProperty]
+    private ObservableCollection<EditorTab> _tabs = [];
+    [ObservableProperty]
+    private EditorTab? _activeTab;
+    [ObservableProperty]
+    private string _statusText = "Готов";
+    [ObservableProperty]
+    private string _explorerTitle = "ОБОЗРЕВАТЕЛЬ";
+    [ObservableProperty]
+    private bool _isEditorVisible;
+    private FileNode? _rootNode;
+    private string? _workspacePath { get; set; }
+    internal event Action<string, string>? FileOpened;
+    internal event Func<Task>? FileSaving;
+    public string? WorkspacePath
+    {
+        get => _workspacePath;
+        set
+        {
+            _workspacePath = value;
+            if (!string.IsNullOrEmpty(value))
+            {
+                LoadWorkspace(value);
+            }
+        }
+    }
+    private void LoadWorkspace(string path)
+    {
+        _rootNode = WorkspaceService.BuildFolderTree(path);
+        ExplorerTitle = Path.GetFileName(path).ToUpperInvariant();
+        RebuildFlatTree();
+        StatusText = $"Открыт проект: {ExplorerTitle}";
+    }
+    private void RebuildFlatTree()
+    {
+        FlatTree.Clear();
+        if (_rootNode != null)
+        {
+            AddFlatNodes(_rootNode);
+        }
+    }
+    private void AddFlatNodes(FileNode node)
+    {
+        FlatTree.Add(node);
+        if (node.IsExpanded)
+        {
+            foreach (var child in node.Children)
+            {
+                AddFlatNodes(child);
+            }
+        }
+    }
+    [RelayCommand]
+    internal void ToggleNode(FileNode? node)
+    {
+        if (node is null || node.Kind == FileNodeKind.File)
+        {
+            return;
+        }
+        node.IsExpanded = !node.IsExpanded;
+        RebuildFlatTree();
+    }
+    [RelayCommand]
+    internal async Task SelectNodeAsync(FileNode? node)
+    {
+        if (node is null)
+        {
+            return;
+        }
+        if (node.Kind == FileNodeKind.File)
+        {
+            await OpenFileAsync(node.FullPath);
+        }
+        else
+        {
+            ToggleNode(node);
+        }
+    }
+    private async Task OpenFileAsync(string path)
+    {
+        var existing = Tabs.FirstOrDefault(t => t.FilePath == path);
+        if (existing != null)
+        {
+            ActivateTab(existing);
+            return;
+        }
+        StatusText = $"Загрузка: {Path.GetFileName(path)}";
+        var content = await WorkspaceService.ReadFileAsync(path);
+        EditorTab tab = new() { FilePath = path, Content = content };
+        Tabs.Add(tab);
+        ActivateTab(tab);
+        StatusText = "Готов";
+    }
+    [RelayCommand]
+    internal void ActivateTab(EditorTab? tab)
+    {
+        if (tab is null)
+        {
+            return;
+        }
+        foreach (var t in Tabs)
+        {
+            t.IsActive = false;
+        }
+        tab.IsActive = true;
+        ActiveTab = tab;
+        _isEditorVisible = true;
+        var monacoLang = Path.GetExtension(tab.FilePath).ToLowerInvariant() switch
+        {
+            ".c" => "c",
+            ".cpp" or ".h" or ".hpp" => "cpp",
+            ".cs" => "csharp",
+            ".json" => "json",
+            ".xml" or ".xaml" or ".csproj" => "xml",
+            _ => "plaintext"
+        };
+        FileOpened?.Invoke(tab.Content, monacoLang);
+    }
+    [RelayCommand]
+    internal void CloseTab(EditorTab? tab)
+    {
+        if (tab != null)
+        {
+            _ = Tabs.Remove(tab);
+        }
+        if (Tabs.Count == 0)
+        {
+            ActiveTab = null;
+            _isEditorVisible = false;
+        }
+        else
+        {
+            ActivateTab(Tabs.Last());
+        }
+    }
+    [RelayCommand]
+    internal async Task SaveActiveFileAsync()
+    {
+        if (ActiveTab is null || FileSaving is null)
+        {
+            return;
+        }
+        await FileSaving.Invoke();
+        await WorkspaceService.SaveFileAsync(ActiveTab.FilePath, ActiveTab.Content);
+        ActiveTab.IsModified = false;
+        StatusText = "✅ Сохранено";
+    }
+    [RelayCommand]
+    internal static async Task GoBackAsync() => await Shell.Current.GoToAsync("//WelcomePage");
+}
+
+
+========================================
+FILE: PageModels\WelcomePageModel.cs
+========================================
+using CIDE.Models;
+using CIDE.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using System.Collections.ObjectModel;
+namespace CIDE.PageModels;
+internal partial class WelcomePageModel : ObservableObject
+{
+    public static ObservableCollection<RecentEntry> Recents => WorkspaceService.Recents;
+    public WelcomePageModel()
+    => WorkspaceService.LoadRecents();
+    [RelayCommand]
+    public static async Task OpenFolderAsync()
+    {
+        var path = await WorkspaceService.PickFolderAsync();
+        if (path != null)
+        {
+            await GoToWorkspaceAsync(path);
+        }
+    }
+    [RelayCommand]
+    public static async Task OpenSolutionAsync()
+    {
+        var path = await WorkspaceService.PickSolutionAsync();
+        if (path != null)
+        {
+            await GoToWorkspaceAsync(path);
+        }
+    }
+    [RelayCommand]
+    public static async Task OpenRecentAsync(RecentEntry? entry)
+    {
+        if (entry != null && (Directory.Exists(entry.Path) || File.Exists(entry.Path)))
+        {
+            await GoToWorkspaceAsync(entry.Path);
+        }
+    }
+    private static async Task GoToWorkspaceAsync(string path)
+    => await Shell.Current.GoToAsync($"MainPage?path={Uri.EscapeDataString(path)}");
+}
+
+
+========================================
+FILE: Pages\MainPage.xaml
+========================================
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pm="clr-namespace:CIDE.PageModels"
+             xmlns:m="clr-namespace:CIDE.Models"
+             xmlns:helpers="clr-namespace:CIDE.Helpers"
+             x:Class="CIDE.Pages.MainPage"
+             Shell.NavBarIsVisible="False"
+             x:ClassModifier="internal"
+             BackgroundColor="#1E1E1E">
+
+    <ContentPage.Resources>
+        <helpers:DepthToMarginConverter x:Key="DepthConverter"/>
+    </ContentPage.Resources>
+
+    <!-- IDE Workspace -->
+    <Grid RowDefinitions="40, *, 24">
+
+        <!-- Toolbar -->
+        <Border Grid.Row="0" BackgroundColor="#2D2D2D" Stroke="#333" StrokeThickness="1">
+            <HorizontalStackLayout Spacing="5" Padding="10,0" VerticalOptions="Center">
+                <Button Text="⌂ Назад" Command="{Binding GoBackCommand}" BackgroundColor="Transparent" TextColor="#CCC" Padding="10,5"/>
+                <BoxView WidthRequest="1" Color="#333" Margin="5,8"/>
+                <Button Text="💾 Сохранить" Command="{Binding SaveActiveFileCommand}" BackgroundColor="Transparent" TextColor="#CCC" Padding="10,5"/>
+            </HorizontalStackLayout>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="260, 2, *">
+            <!-- Обозреватель -->
+            <Border Grid.Column="0" BackgroundColor="#252526" Stroke="#333" StrokeThickness="1">
+                <Grid RowDefinitions="35, *">
+                    <Label Grid.Row="0" Text="{Binding ExplorerTitle}" TextColor="Gray" FontSize="11" Margin="15,10,0,0" FontAttributes="Bold"/>
+
+                    <CollectionView Grid.Row="1" ItemsSource="{Binding FlatTree}" SelectionMode="Single" SelectionChanged="OnTreeSelectionChanged">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="m:FileNode">
+                                <Grid ColumnDefinitions="15, 20, *" Margin="{Binding Depth, Converter={StaticResource DepthConverter}}" Padding="0,5">
+                                    <Label Grid.Column="0" Text="{Binding Glyph}" TextColor="{Binding GlyphColor}" FontSize="12" VerticalOptions="Center"/>
+                                    <Label Grid.Column="1" Text="{Binding IconText}" TextColor="{Binding IconColor}" FontSize="10" FontAttributes="Bold" VerticalOptions="Center" HorizontalOptions="Center"/>
+                                    <Label Grid.Column="2" Text="{Binding Name}" TextColor="#CCC" FontSize="13" VerticalOptions="Center" LineBreakMode="TailTruncation"/>
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </Grid>
+            </Border>
+
+            <BoxView Grid.Column="1" Color="#333"/>
+
+            <!-- Область редактора -->
+            <Grid Grid.Column="2" RowDefinitions="35, *">
+
+                <!-- Панель вкладок -->
+                <Border Grid.Row="0" BackgroundColor="#2D2D2D" Stroke="#333" StrokeThickness="1">
+                    <ScrollView Orientation="Horizontal">
+                        <HorizontalStackLayout BindableLayout.ItemsSource="{Binding Tabs}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="m:EditorTab">
+                                    <Border BackgroundColor="{Binding BackgroundBrush}" Stroke="#333" StrokeThickness="1" Padding="15,0,5,0">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding BindingContext.ActivateTabCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" CommandParameter="{Binding}"/>
+                                        </Border.GestureRecognizers>
+                                        <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                                            <Label Text="{Binding DisplayName}" TextColor="#CCC" VerticalOptions="Center"/>
+                                            <Button Text="✕" WidthRequest="30" HeightRequest="30" Padding="0" BackgroundColor="Transparent" TextColor="#CCC"
+                                                    Command="{Binding BindingContext.CloseTabCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" CommandParameter="{Binding}"/>
+                                        </HorizontalStackLayout>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </HorizontalStackLayout>
+                    </ScrollView>
+                </Border>
+
+                <!-- Заглушка (когда нет открытых файлов) -->
+                <VerticalStackLayout Grid.Row="1" VerticalOptions="Center" HorizontalOptions="Center" Spacing="15">
+                    <VerticalStackLayout.Triggers>
+                        <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding IsEditorVisible}" Value="True">
+                            <Setter Property="IsVisible" Value="False" />
+                        </DataTrigger>
+                    </VerticalStackLayout.Triggers>
+
+                    <Label Text="CIDE" FontSize="80" TextColor="#252526" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Label Text="Выберите файл в обозревателе для редактирования" TextColor="#333333" FontSize="14" HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+
+                <!-- Движок Monaco (WebView) -->
+                <WebView Grid.Row="1" 
+                         x:Name="MonacoView"
+                         IsVisible="{Binding IsEditorVisible}"
+                         Margin="0"/>
+            </Grid>
+        </Grid>
+
+        <!-- StatusBar -->
+        <Grid Grid.Row="2" BackgroundColor="#007ACC" Padding="15,0">
+            <Label Text="{Binding StatusText}" TextColor="White" FontSize="12" VerticalOptions="Center"/>
+        </Grid>
+    </Grid>
+</ContentPage>
+
+
+========================================
+FILE: Pages\MainPage.xaml.cs
+========================================
+using System.Text.Json;
+namespace CIDE.Pages;
+
+internal partial class MainPage : ContentPage
+{
+    private readonly MainPageModel _model;
+    public MainPage(MainPageModel model)
+    {
+        InitializeComponent();
+        _model = model;
+        BindingContext = _model;
+        _model.FileOpened += OnFileOpenedAsync;
+        _model.FileSaving += OnFileSavingAsync;
+        LoadMonacoEditorAsync();
+    }
+    private async void LoadMonacoEditorAsync()
+    {
+        using var stream = await FileSystem.OpenAppPackageFileAsync("monaco.html");
+        using StreamReader reader = new(stream);
+        var html = await reader.ReadToEndAsync();
+        MonacoView.Source = new HtmlWebViewSource { Html = html };
+    }
+    private async void OnFileOpenedAsync(string content, string language)
+    {
+        var escapedContent = Uri.EscapeDataString(content);
+        _ = await MonacoView.EvaluateJavaScriptAsync($"setEditorText('{escapedContent}', '{language}')");
+    }
+    private async Task OnFileSavingAsync()
+    {
+        var rawJsonString = await MonacoView.EvaluateJavaScriptAsync("getEditorText()");
+        if (!string.IsNullOrEmpty(rawJsonString) && rawJsonString != "null")
+        {
+            var actualText = JsonSerializer.Deserialize(rawJsonString, CideJsonContext.Default.String);
+            if (_model.ActiveTab != null)
+            {
+                _model.ActiveTab.Content = actualText ?? string.Empty;
+            }
+        }
+    }
+    private void OnTreeSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.CurrentSelection.FirstOrDefault() is Models.FileNode)
+        {
+        }
+    }
+}
+
+
+========================================
+FILE: Pages\SettingsPage.xaml
+========================================
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="CIDE.Pages.SettingsPage"
+             x:ClassModifier="internal"
+             Title="Настройки">
+    <VerticalStackLayout Spacing="20" Padding="40">
+        <Label Text="⚙ Настройки CIDE" FontSize="32" FontAttributes="Bold"/>
+        <Label Text="Здесь будет менеджер SSH подключений, настройки WSL и управление плагинами." TextColor="Gray" />
+    </VerticalStackLayout>
+</ContentPage>
+
+
+========================================
+FILE: Pages\SettingsPage.xaml.cs
+========================================
+namespace CIDE.Pages;
+internal partial class SettingsPage : ContentPage
+{
+    public SettingsPage() => InitializeComponent();
+}
+
+
+========================================
+FILE: Pages\WelcomePage.xaml
+========================================
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pm="clr-namespace:CIDE.PageModels"
+             xmlns:m="clr-namespace:CIDE.Models"
+             xmlns:helpers="clr-namespace:CIDE.Helpers"
+             x:Class="CIDE.Pages.WelcomePage"
+             x:ClassModifier="internal"
+             Shell.NavBarIsVisible="False">
+
+    <Grid ColumnDefinitions="300, *">
+        <!-- Сайдбар недавних -->
+        <Border Grid.Column="0" BackgroundColor="{StaticResource BgSecondary}" StrokeThickness="0,0,1,0" Stroke="{StaticResource BorderColor}">
+            <VerticalStackLayout>
+                <Label Text="CIDE" FontSize="44" FontAttributes="Bold" TextColor="{StaticResource Accent}" Margin="25,30,0,10"/>
+                <Label Text="C/C++/C# Smart IDE" FontSize="12" TextColor="{StaticResource TextSecondary}" Margin="25,0,0,10"/>
+                <BoxView HeightRequest="1" Color="{StaticResource BorderColor}" Margin="20,10"/>
+                <Label Text="НЕДАВНИЕ ПРОЕКТЫ" FontSize="11" TextColor="{StaticResource TextSecondary}" Margin="25,0,0,10"/>
+
+                <CollectionView ItemsSource="{Binding Recents}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="m:RecentEntry">
+                            <Grid Padding="20,10">
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding BindingContext.OpenRecentCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" CommandParameter="{Binding}"/>
+                                </Grid.GestureRecognizers>
+                                <Grid ColumnDefinitions="30, *">
+                                    <Label Grid.Column="0" Text="{Binding Icon}" TextColor="#E8C56D" FontSize="16" VerticalOptions="Center"/>
+                                    <VerticalStackLayout Grid.Column="1">
+                                        <Label Text="{Binding Name}" TextColor="{StaticResource TextPrimary}" FontSize="14"/>
+                                        <Label Text="{Binding Path}" TextColor="{StaticResource TextSecondary}" FontSize="10" LineBreakMode="HeadTruncation"/>
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- Карточки действий -->
+        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="40">
+            <Label Text="Начало работы" FontSize="32" TextColor="{StaticResource TextPrimary}" HorizontalOptions="Center"/>
+            <HorizontalStackLayout HorizontalOptions="Center" Spacing="25">
+
+                <Frame BackgroundColor="{StaticResource BgSecondary}" BorderColor="{StaticResource BorderColor}" CornerRadius="12" WidthRequest="220" HeightRequest="200">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding OpenFolderCommand}"/>
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout VerticalOptions="Center" Spacing="15">
+                        <Label Text="📂" FontSize="50" HorizontalOptions="Center"/>
+                        <Label Text="Открыть папку" FontSize="16" FontAttributes="Bold" HorizontalOptions="Center"/>
+                        <Label Text="Любой C/C++ проект" FontSize="12" TextColor="{StaticResource TextSecondary}" HorizontalOptions="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Frame BackgroundColor="{StaticResource BgSecondary}" BorderColor="{StaticResource BorderColor}" CornerRadius="12" WidthRequest="220" HeightRequest="200">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding OpenSolutionCommand}"/>
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout VerticalOptions="Center" Spacing="15">
+                        <Label Text="⬡" FontSize="50" TextColor="#C586C0" HorizontalOptions="Center"/>
+                        <Label Text="Открыть решение" FontSize="16" FontAttributes="Bold" HorizontalOptions="Center"/>
+                        <Label Text=".slnx для C# проектов" FontSize="12" TextColor="{StaticResource TextSecondary}" HorizontalOptions="Center"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>
+
+
+========================================
+FILE: Pages\WelcomePage.xaml.cs
+========================================
+using CIDE.PageModels;
+namespace CIDE.Pages;
+internal partial class WelcomePage : ContentPage
+{
+    public WelcomePage(WelcomePageModel model)
+    {
+        InitializeComponent();
+        BindingContext = model;
+    }
+}
+
+
+========================================
+FILE: Properties\launchSettings.json
+========================================
+{
+  "profiles": {
+    "Windows Machine": {
+      "commandName": "Project",
+      "nativeDebugging": false
+    }
+  }
+}
+
+========================================
+FILE: Services\WorkspaceService.cs
+========================================
+using System.Collections.ObjectModel;
+using System.Text.Json;
+using CIDE.Models;
+using CommunityToolkit.Maui.Storage;
+namespace CIDE.Services;
+public static class WorkspaceService
+{
+    public static ObservableCollection<RecentEntry> Recents { get; } = new();
+    private static readonly string RecentsFile = Path.Combine(FileSystem.AppDataDirectory, "recents.json");
+    public static async Task<string?> PickFolderAsync()
+    {
+        var result = await FolderPicker.Default.PickAsync(CancellationToken.None);
+        if (result.IsSuccessful)
+        {
+            AddRecent(result.Folder.Path, "folder");
+            return result.Folder.Path;
+        }
+        return null;
+    }
+    public static async Task<string?> PickSolutionAsync()
+    {
+        var result = await FilePicker.Default.PickAsync(new PickOptions
+        {
+            PickerTitle = "Выберите решение",
+            FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>> {
+                { DevicePlatform.WinUI, [".sln", ".slnx"] }
+            })
+        });
+        if (result != null)
+        {
+            var dir = Path.GetDirectoryName(result.FullPath);
+            AddRecent(result.FullPath, "solution");
+            return dir;
+        }
+        return null;
+    }
+    public static async Task<string> ReadFileAsync(string path) => await File.ReadAllTextAsync(path);
+    public static async Task SaveFileAsync(string path, string content) => await File.WriteAllTextAsync(path, content);
+    public static void LoadRecents()
+    {
+        if (File.Exists(RecentsFile))
+        {
+            var list = JsonSerializer.Deserialize(File.ReadAllText(RecentsFile), CideJsonContext.Default.ListRecentEntry);
+            if (list != null)
+            {
+                foreach (var r in list)
+                {
+                    Recents.Add(r);
+                }
+            }
+        }
+    }
+    private static void AddRecent(string path, string type)
+    {
+        var ex = Recents.FirstOrDefault(r => r.Path == path);
+        if (ex != null)
+        {
+            Recents.Remove(ex);
+        }
+        Recents.Insert(0, new RecentEntry { Path = path, Type = type, LastOpened = DateTime.Now });
+        File.WriteAllText(RecentsFile, JsonSerializer.Serialize(Recents.ToList(), CideJsonContext.Default.ListRecentEntry));
+    }
+    public static FileNode BuildFolderTree(string rootPath)
+    {
+        var root = new FileNode { Name = Path.GetFileName(rootPath), FullPath = rootPath, Kind = FileNodeKind.Folder, IsExpanded = true, Depth = 0 };
+        FillChildren(root, new DirectoryInfo(rootPath), 1);
+        return root;
+    }
+    private static void FillChildren(FileNode parent, DirectoryInfo dir, int depth)
+    {
+        if (!dir.Exists)
+            return;
+        foreach (var sub in dir.GetDirectories().Where(d => !d.Name.StartsWith(".") && d.Name != "bin" && d.Name != "obj").OrderBy(d => d.Name))
+        {
+            var node = new FileNode { Name = sub.Name, FullPath = sub.FullName, Kind = FileNodeKind.Folder, Depth = depth };
+            FillChildren(node, sub, depth + 1);
+            parent.Children.Add(node);
+        }
+        foreach (var f in dir.GetFiles().OrderBy(f => f.Name))
+            parent.Children.Add(new FileNode { Name = f.Name, FullPath = f.FullName, Kind = FileNodeKind.File, Depth = depth });
+    }
+}
+
+
+========================================
+FILE: Platforms\Windows\app.manifest
+========================================
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <assemblyIdentity version="1.0.0.0" name="CIDE.WinUI.app"/>
+
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <!-- The combination of below two tags have the following effect:
+           1) Per-Monitor for >= Windows 10 Anniversary Update
+           2) System < Windows 10 Anniversary Update
+      -->
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/PM</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2, PerMonitor</dpiAwareness>
+
+      <longPathAware xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">true</longPathAware>
+    </windowsSettings>
+  </application>
+</assembly>
+
+
+========================================
+FILE: Platforms\Windows\App.xaml
+========================================
+<maui:MauiWinUIApplication
+    x:Class="CIDE.WinUI.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:maui="using:Microsoft.Maui"
+    xmlns:local="using:CIDE.WinUI">
+
+</maui:MauiWinUIApplication>
+
+
+========================================
+FILE: Platforms\Windows\App.xaml.cs
+========================================
+using Microsoft.UI.Xaml;
+namespace CIDE.WinUI;
+public partial class App : MauiWinUIApplication
+{
+    public App()
+    {
+        this.InitializeComponent();
+    }
+    protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
+}
+
+
+========================================
+FILE: Platforms\Windows\Package.appxmanifest
+========================================
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity Name="maui-package-name-placeholder" Publisher="CN=User Name" Version="0.0.0.0" />
+
+  <mp:PhoneIdentity PhoneProductId="FCE5837F-B11F-4AAC-A446-64AFC07139D1" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+
+  <Properties>
+    <DisplayName>$placeholder$</DisplayName>
+    <PublisherDisplayName>User Name</PublisherDisplayName>
+    <Logo>$placeholder$.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="x-generate" />
+  </Resources>
+
+  <Applications>
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
+      <uap:VisualElements
+        DisplayName="$placeholder$"
+        Description="$placeholder$"
+        Square150x150Logo="$placeholder$.png"
+        Square44x44Logo="$placeholder$.png"
+        BackgroundColor="transparent">
+        <uap:DefaultTile Square71x71Logo="$placeholder$.png" Wide310x150Logo="$placeholder$.png" Square310x310Logo="$placeholder$.png" />
+        <uap:SplashScreen Image="$placeholder$.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+</Package>
+
+
+========================================
+FILE: Resources\Raw\monaco.html
+========================================
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #1E1E1E;
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+</head>
+<body>
+    <div id="container"></div>
+    <script>
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+        let editor;
+
+        require(['vs/editor/editor.main'], function() {
+            editor = monaco.editor.create(document.getElementById('container'), {
+                value: '// CIDE (C-Family IDE) Initialized\n// C, C++, C# Ready...',
+                language: 'csharp',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: true },
+                fontFamily: 'Consolas',
+                fontSize: 14
+            });
+        });
+
+        // Функция вызывается из C# MAUI
+        function setEditorText(text, lang) {
+            if(editor) {
+                monaco.editor.setModelLanguage(editor.getModel(), lang);
+                editor.setValue(decodeURIComponent(text));
+            }
+        }
+
+        // Функция вызывается из C# MAUI при сохранении
+        function getEditorText() {
+            return editor ? editor.getValue() : '';
+        }
+    </script>
+</body>
+</html>
+
+
+========================================
+FILE: Resources\Styles\Styles.xaml
+========================================
+<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- Базовая палитра CIDE -->
+    <Color x:Key="BgPrimary">#1E1E1E</Color>
+    <Color x:Key="BgSecondary">#252526</Color>
+    <Color x:Key="TextPrimary">#D4D4D4</Color>
+    <Color x:Key="TextSecondary">#858585</Color>
+    <Color x:Key="Accent">#007ACC</Color>
+    <Color x:Key="BorderColor">#333333</Color>
+
+    <!-- Стили по умолчанию -->
+    <Style TargetType="Page" ApplyToDerivedTypes="True">
+        <Setter Property="BackgroundColor" Value="{StaticResource BgPrimary}" />
+    </Style>
+
+    <Style TargetType="Label">
+        <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
+        <Setter Property="FontFamily" Value="OpenSansRegular" />
+    </Style>
+
+    <Style TargetType="Button">
+        <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="FontFamily" Value="OpenSansRegular" />
+        <Setter Property="VisualStateManager.VisualStateGroups">
+            <VisualStateGroupList>
+                <VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal" />
+                    <VisualState x:Name="PointerOver">
+                        <VisualState.Setters>
+                            <Setter Property="BackgroundColor" Value="#3E3E42" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateGroupList>
+        </Setter>
+    </Style>
+</ResourceDictionary>
+
