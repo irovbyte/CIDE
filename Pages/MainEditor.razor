@@ -1,0 +1,162 @@
+@using Microsoft.JSInterop
+@using CIDE.PageModels
+@using CIDE.Helpers
+@inject IJSRuntime JS
+@implements IDisposable
+
+@if (_displayMode == FileDisplayMode.Binary)
+{
+    <div class="cide-message-container">
+        <div class="cide-message-icon">⬡</div>
+        <div class="cide-message-title">Двоичный файл</div>
+        <div class="cide-message-text">
+            Файл не отображается в текстовом редакторе,<br />
+            так как является двоичным или использует<br />
+            неподдерживаемую кодировку текста.
+        </div>
+        @if (!string.IsNullOrEmpty(_filePath))
+        {
+            <div class="cide-message-meta">
+                @System.IO.Path.GetFileName(_filePath) · @FileTypeHelper.GetFileSize(_filePath)
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div id="editor-container"></div>
+}
+
+<style>
+    body, html {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        width: 100%;
+        overflow: hidden;
+        background-color: #0A0910;
+    }
+
+    #app {
+        height: 100%;
+        width: 100%;
+    }
+
+    #editor-container {
+        height: 100%;
+        width: 100%;
+    }
+
+    .cide-message-container {
+        height: 100%;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #0A0910;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        gap: 10px;
+        padding: 40px;
+        box-sizing: border-box;
+    }
+
+    .cide-message-icon {
+        font-size: 42px;
+        opacity: 0.18;
+        line-height: 1;
+        margin-bottom: 6px;
+    }
+
+    .cide-message-title {
+        color: #6C63FF;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    .cide-message-text {
+        color: #3D3660;
+        font-size: 12px;
+        text-align: center;
+        line-height: 1.75;
+        max-width: 380px;
+    }
+
+    .cide-message-meta {
+        color: #2A2440;
+        font-size: 10px;
+        font-family: 'Consolas', monospace;
+        margin-top: 6px;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public MainPageModel ViewModel { get; set; } = null!;
+
+    private FileDisplayMode _displayMode = FileDisplayMode.Text;
+    private string _filePath = "";
+    private string? _pendingContent;
+    private string? _pendingLanguage;
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (ViewModel != null)
+            {
+                ViewModel.FileOpened += OnFileOpened;
+                ViewModel.FileSaving += OnFileSaving;
+            }
+        }
+
+        if (_displayMode == FileDisplayMode.Text)
+        {
+            await JS.InvokeVoidAsync("cideEditor.ensureInit");
+
+            if (_pendingContent != null)
+            {
+                var content = _pendingContent;
+                var language = _pendingLanguage ?? "plaintext";
+                _pendingContent = null;
+                _pendingLanguage = null;
+                await JS.InvokeVoidAsync("cideEditor.setCode", content, language);
+            }
+        }
+    }
+
+
+    private async void OnFileOpened(string content, string language, FileDisplayMode mode)
+    {
+        _displayMode = mode;
+        _filePath = ViewModel?.ActiveTab?.FilePath ?? "";
+
+        if (mode == FileDisplayMode.Text)
+        {
+            _pendingContent = content ?? "";
+            _pendingLanguage = language;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnFileSaving()
+    {
+        if (ViewModel?.ActiveTab != null && _displayMode == FileDisplayMode.Text)
+        {
+            var code = await JS.InvokeAsync<string>("cideEditor.getCode");
+            ViewModel.ActiveTab.Content = code;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (ViewModel != null)
+        {
+            ViewModel.FileOpened -= OnFileOpened;
+            ViewModel.FileSaving -= OnFileSaving;
+        }
+    }
+}

@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <!-- Строго Windows 11 -->
     <TargetFramework>net10.0-windows10.0.22000.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.22000.0</TargetPlatformMinVersion>
     <SupportedOSPlatformVersion>10.0.22000.0</SupportedOSPlatformVersion>
@@ -14,34 +13,24 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
-    <!-- Оптимизация XAML -->
-    <MauiXamlInflator>SourceGen</MauiXamlInflator>
-
     <ApplicationTitle>CIDE</ApplicationTitle>
     <ApplicationId>com.core.cide</ApplicationId>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
 
-    <!-- Режим Unpackaged (работает как обычный .exe) -->
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Иконка и Splash Screen (в темном цвете IDE) -->
     <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#1E1E1E" />
     <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#1E1E1E" BaseSize="128,128" />
 
-    <!-- Ассеты -->
     <MauiFont Include="Resources\Fonts\*" />
     <MauiImage Include="Resources\Images\*" />
     <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Пустые папки для сохранения структуры -->
-    <Folder Include="Resources\Images\" />
+    <Content Include="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -54,8 +43,4 @@
     <PackageReference Include="SSH.NET" Version="2025.1.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Remove="CIDE.Tests\**" />
-    <None Include="CIDE.Tests\**" />
-  </ItemGroup>
 </Project>

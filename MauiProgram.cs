@@ -2,7 +2,6 @@ using System.Runtime.Versioning;
 using CIDE.PageModels;
 using CIDE.Pages;
 using CommunityToolkit.Maui;
-using Windows.UI.ApplicationSettings;
 using Microsoft.Extensions.Logging;
 namespace CIDE;
 
@@ -21,6 +20,9 @@ internal static class MauiProgram
                 _ = fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             });
         _ = builder.Services.AddMauiBlazorWebView();
+#if DEBUG
+        builder.Services.AddBlazorWebViewDeveloperTools();
+#endif
         _ = builder.Services.AddTransient<WelcomePage>();
         _ = builder.Services.AddTransient<WelcomePageModel>();
         _ = builder.Services.AddTransient<SettingsPage>();

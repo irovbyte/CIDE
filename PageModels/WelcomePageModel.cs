@@ -51,5 +51,5 @@ internal sealed partial class WelcomePageModel : ObservableObject
     }
 
     private static async Task GoToWorkspaceAsync(string path) =>
-        await Shell.Current.GoToAsync($"MainPage?path={Uri.EscapeDataString(path)}");
+        await Shell.Current.GoToAsync($"//MainPage?path={Uri.EscapeDataString(path)}");
 }

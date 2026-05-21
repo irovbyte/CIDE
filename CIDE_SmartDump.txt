@@ -51,6 +51,174 @@ internal sealed class DepthToMarginConverter : IValueConverter
 
 
 ======================================================================
+FILE: Helpers\FileTypeHelper.cs
+======================================================================
+
+using System.Text;
+
+namespace CIDE.Helpers;
+public enum FileDisplayMode
+{
+    Text,
+    Binary,
+    Executable,
+}
+public static class FileTypeHelper
+{
+    private static readonly HashSet<string> s_executableExtensions =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".exe", ".msi", ".msix", ".appx",
+        };
+    private static readonly HashSet<string> s_binaryExtensions =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".o", ".obj", ".a", ".lib", ".so", ".dylib", ".dll", ".pdb",
+            ".zip", ".tar", ".gz", ".bz2", ".xz", ".zst", ".7z", ".rar", ".pak",
+            ".db", ".sqlite", ".sqlite3", ".mdb", ".accdb",
+            ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".webp", ".tiff", ".tga", ".psd",
+            ".mp3", ".mp4", ".avi", ".mov", ".mkv", ".flac", ".wav", ".ogg", ".m4a",
+            ".woff", ".woff2", ".ttf", ".eot", ".otf",
+            ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+            ".class", ".pyc", ".pyo", ".pyd",
+            ".bin", ".dat", ".raw", ".img",
+        };
+    public static FileDisplayMode GetDisplayMode(string filePath)
+    {
+        var ext = Path.GetExtension(filePath);
+
+        if (s_executableExtensions.Contains(ext))
+            return FileDisplayMode.Executable;
+
+        if (s_binaryExtensions.Contains(ext))
+            return FileDisplayMode.Binary;
+        return IsBinaryFile(filePath) ? FileDisplayMode.Binary : FileDisplayMode.Text;
+    }
+    public static string GetMonacoLanguage(string filePath)
+    {
+        var name = Path.GetFileName(filePath);
+        var ext  = Path.GetExtension(filePath).ToLowerInvariant();
+        if (string.IsNullOrEmpty(ext))
+        {
+            return name.ToLowerInvariant() switch
+            {
+                "makefile" or "gnumakefile" => "makefile",
+                "dockerfile" or "containerfile" => "dockerfile",
+                _ => "plaintext",
+            };
+        }
+
+        return ext switch
+        {
+            ".c" => "c",
+            ".cpp" or ".cc" or ".cxx" or ".c++" => "cpp",
+            ".h" or ".hpp" or ".hh" or ".hxx" => "cpp",
+            ".cs" => "csharp",
+            ".csproj" or ".slnx" or ".props" or ".targets" => "xml",
+            ".razor" or ".cshtml" => "razor",
+            ".html" or ".htm" => "html",
+            ".css" => "css",
+            ".scss" => "scss",
+            ".less" => "less",
+            ".js" or ".mjs" or ".cjs" => "javascript",
+            ".jsx" => "javascript",
+            ".ts" => "typescript",
+            ".tsx" => "typescript",
+            ".json" or ".jsonc" => "json",
+            ".xml" or ".xaml" or ".config" or ".resx" or ".svg" => "xml",
+            ".yaml" or ".yml" => "yaml",
+            ".toml" => "ini",
+            ".csv" => "plaintext",
+            ".sql" => "sql",
+            ".md" or ".markdown" or ".mdx" => "markdown",
+            ".py" or ".pyw" => "python",
+            ".sh" or ".bash" or ".zsh" or ".fish" => "shell",
+            ".bat" or ".cmd" => "bat",
+            ".ps1" or ".psm1" or ".psd1" => "powershell",
+            ".lua" => "lua",
+            ".rb" => "ruby",
+            ".php" => "php",
+            ".r" or ".rmd" => "r",
+            ".go" => "go",
+            ".rs" => "rust",
+            ".java" => "java",
+            ".kt" or ".kts" => "kotlin",
+            ".swift" => "swift",
+            ".dockerfile" => "dockerfile",
+            ".mk" or ".make" => "makefile",
+            ".txt" or ".log" or ".ini" or ".env" => "plaintext",
+            ".gitignore" or ".gitattributes" or ".editorconfig" => "plaintext",
+
+            _ => "plaintext",
+        };
+    }
+    public static string GetFileSize(string filePath)
+    {
+        try
+        {
+            var bytes = new FileInfo(filePath).Length;
+            return bytes switch
+            {
+                < 1024L              => $"{bytes} Б",
+                < 1024L * 1024      => $"{bytes / 1024.0:F1} КБ",
+                < 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} МБ",
+                _                   => $"{bytes / (1024.0 * 1024 * 1024):F2} ГБ",
+            };
+        }
+        catch { return ""; }
+    }
+    private static bool IsBinaryFile(string filePath)
+    {
+        try
+        {
+            using var stream = new FileStream(
+                filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+
+            var length = (int)Math.Min(8192, stream.Length);
+            if (length == 0)
+                return false;
+
+            var buffer = new byte[length];
+            var read = stream.Read(buffer, 0, length);
+
+            return HasBinarySignature(buffer, read) || HasHighBinaryRatio(buffer, read);
+        }
+        catch
+        {
+            return true; 
+        }
+    }
+    private static bool HasBinarySignature(byte[] buf, int len)
+    {
+        if (len >= 2 && buf[0] == 0x4D && buf[1] == 0x5A) return true;
+        if (len >= 4 && buf[0] == 0x7F && buf[1] == 0x45 && buf[2] == 0x4C && buf[3] == 0x46) return true;
+        if (len >= 8 && buf[0] == 0x89 && buf[1] == 0x50 && buf[2] == 0x4E && buf[3] == 0x47) return true;
+        if (len >= 2 && buf[0] == 0x50 && buf[1] == 0x4B) return true;
+        if (len >= 4 && buf[0] == 0x25 && buf[1] == 0x50 && buf[2] == 0x44 && buf[3] == 0x46) return true;
+        return false;
+    }
+    private static bool HasHighBinaryRatio(byte[] buf, int len)
+    {
+        int nullBytes    = 0;
+        int controlBytes = 0;
+
+        for (var i = 0; i < len; i++)
+        {
+            var b = buf[i];
+            if (b == 0x00)
+                nullBytes++;
+            else if (b < 0x08 || (b >= 0x0E && b < 0x20))
+                controlBytes++;
+        }
+        if (nullBytes > 0 && nullBytes * 100 / len >= 1) return true;
+        if (controlBytes * 100 / len >= 10) return true;
+
+        return false;
+    }
+}
+
+
+======================================================================
 FILE: Helpers\Win32FileDialog.cs
 ======================================================================
 
@@ -80,7 +248,7 @@ public static class Win32FileDialog
             dialog.SetOptions(FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM);
             dialog.SetTitle("Выберите папку проекта");
             var hr = dialog.Show(owner);
-            if (hr == 0) 
+            if (hr == 0)
             {
                 dialog.GetResult(out var item);
                 if (item != null)
@@ -110,7 +278,7 @@ public static class Win32FileDialog
             };
             dialog.SetFileTypes((uint)filters.Length, filters);
             var hr = dialog.Show(owner);
-            if (hr == 0) 
+            if (hr == 0)
             {
                 dialog.GetResult(out var item);
                 if (item != null)
@@ -232,10 +400,10 @@ public partial class FileNode : ObservableObject
     public Thickness TreeMargin => new Thickness(Depth * 15, 0, 0, 0);
     public string Glyph => Kind switch
     {
-        FileNodeKind.Solution => "\uE810", 
-        FileNodeKind.Project => "\uE80F", 
-        FileNodeKind.Folder => IsExpanded ? "\uE974" : "\uE972", 
-        FileNodeKind.File => "\uE8A0", 
+        FileNodeKind.Solution => "\uE810",
+        FileNodeKind.Project => "\uE80F",
+        FileNodeKind.Folder => IsExpanded ? "\uE974" : "\uE972",
+        FileNodeKind.File => "\uE8A0",
         _ => " "
     };
     public string GlyphColor => Kind == FileNodeKind.Folder ? "#858585" : "#858585";
@@ -287,6 +455,7 @@ public partial class EditorTab : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(BackgroundBrush))]
     public partial bool IsActive { get; set; }
+    public FileDisplayMode DisplayMode { get; init; } = FileDisplayMode.Text;
     public string FileName => Path.GetFileName(FilePath);
     public string DisplayName => IsModified ? $"● {FileName}" : FileName;
     public string BackgroundBrush => IsActive ? "#1E1E1E" : "Transparent";
@@ -313,7 +482,7 @@ FILE: PageModels\MainPageModel.cs
 namespace CIDE.PageModels;
 
 [QueryProperty(nameof(WorkspacePath), "path")]
-internal sealed partial class MainPageModel : ObservableObject
+public sealed partial class MainPageModel : ObservableObject
 {
     [ObservableProperty]
     public partial ObservableCollection<FileNode> FlatTree { get; set; } = [];
@@ -328,7 +497,7 @@ internal sealed partial class MainPageModel : ObservableObject
     [ObservableProperty]
     public partial bool IsEditorVisible { get; set; }
     [ObservableProperty]
-    public partial ObservableCollection<string> BuildProfiles { get; set; } = ["Один файл (C/C++)", "Makefile (C/C++)", "Проект C# (.slnx/.csproj)"];
+    public partial ObservableCollection<string> BuildProfiles { get; set; } = [];
     [ObservableProperty]
     public partial string SelectedBuildProfile { get; set; } = "Один файл (C/C++)";
     [ObservableProperty]
@@ -347,11 +516,11 @@ internal sealed partial class MainPageModel : ObservableObject
     public partial ObservableCollection<string> BuildTargets { get; set; } = [];
     [ObservableProperty]
     public partial string? SelectedBuildTarget { get; set; }
+
     private FileNode? _rootNode;
     private string? _workspacePath { get; set; }
-    internal event Action<string, string>? FileOpened;
-    internal event Func<Task>? FileSaving;
-
+    public event Action<string, string, FileDisplayMode>? FileOpened;
+    public event Func<Task>? FileSaving;
     public string? WorkspacePath
     {
         get => _workspacePath;
@@ -359,27 +528,25 @@ internal sealed partial class MainPageModel : ObservableObject
         {
             _workspacePath = value;
             if (!string.IsNullOrEmpty(value))
-            {
                 LoadWorkspace(value);
-            }
         }
     }
+
     private void LoadWorkspace(string path)
     {
         _rootNode = WorkspaceService.BuildFolderTree(path);
         ExplorerTitle = Path.GetFileName(path).ToUpperInvariant();
         RebuildFlatTree();
-        StatusText = $"Открыт проект: {ExplorerTitle}";
+        StatusText = $"Открыт: {ExplorerTitle}";
         DetectTerminals();
         UpdateBuildProfilesAndTargets(path);
     }
+
     private void RebuildFlatTree()
     {
         FlatTree.Clear();
         if (_rootNode != null)
-        {
             AddFlatNodes(_rootNode);
-        }
     }
 
     private void AddFlatNodes(FileNode node)
@@ -388,29 +555,31 @@ internal sealed partial class MainPageModel : ObservableObject
         if (node.IsExpanded)
         {
             foreach (var child in node.Children)
-            {
                 AddFlatNodes(child);
-            }
         }
     }
-
     [RelayCommand]
-    private void ToggleNode(FileNode? node)
+    private async Task SelectNodeAsync(FileNode? node)
     {
-        if (node is null || node.Kind == FileNodeKind.File)
-        {
+        if (node is null)
             return;
-        }
+
+        if (node.Kind == FileNodeKind.File)
+            await OpenFileAsync(node.FullPath);
+        else
+            await ToggleNodeAsync(node);
+    }
+
+    private async Task ToggleNodeAsync(FileNode node)
+    {
         if (!node.IsPopulated)
-        {
-            WorkspaceService.FillChildren(node, new DirectoryInfo(node.FullPath), node.Depth + 1);
-        }
+            await Task.Run(() => WorkspaceService.FillChildren(node, new DirectoryInfo(node.FullPath), node.Depth + 1));
+
         node.IsExpanded = !node.IsExpanded;
         var index = FlatTree.IndexOf(node);
         if (index < 0)
-        {
             return;
-        }
+
         if (node.IsExpanded)
         {
             var insertIndex = index + 1;
@@ -420,77 +589,30 @@ internal sealed partial class MainPageModel : ObservableObject
         {
             var countToRemove = CountVisibleDescendants(node);
             for (var i = 0; i < countToRemove; i++)
-            {
                 FlatTree.RemoveAt(index + 1);
-            }
         }
     }
+
     private void InsertNodeChildren(FileNode node, ref int insertIndex)
     {
         foreach (var child in node.Children)
         {
             FlatTree.Insert(insertIndex++, child);
             if (child.IsExpanded)
-            {
                 InsertNodeChildren(child, ref insertIndex);
-            }
         }
     }
+
     private static int CountVisibleDescendants(FileNode node)
     {
         var count = node.Children.Count;
         foreach (var child in node.Children)
         {
             if (child.IsExpanded)
-            {
                 count += CountVisibleDescendants(child);
-            }
         }
         return count;
     }
-    [RelayCommand]
-    private async Task SelectNodeAsync(FileNode? node)
-    {
-        if (node is null)
-        {
-            return;
-        }
-        if (node.Kind == FileNodeKind.File)
-        {
-            await OpenFileAsync(node.FullPath);
-        }
-        else
-        {
-            await ToggleNodeAsync(node);
-        }
-    }
-    private async Task ToggleNodeAsync(FileNode node)
-    {
-        if (!node.IsPopulated)
-        {
-            await Task.Run(() => WorkspaceService.FillChildren(node, new DirectoryInfo(node.FullPath), node.Depth + 1));
-        }
-        node.IsExpanded = !node.IsExpanded;
-        var index = FlatTree.IndexOf(node);
-        if (index < 0)
-        {
-            return;
-        }
-        if (node.IsExpanded)
-        {
-            var insertIndex = index + 1;
-            InsertNodeChildren(node, ref insertIndex);
-        }
-        else
-        {
-            var countToRemove = CountVisibleDescendants(node);
-            for (var i = 0; i < countToRemove; i++)
-            {
-                FlatTree.RemoveAt(index + 1);
-            }
-        }
-    }
-
     private async Task OpenFileAsync(string path)
     {
         var existing = Tabs.FirstOrDefault(t => t.FilePath == path);
@@ -500,21 +622,47 @@ internal sealed partial class MainPageModel : ObservableObject
             return;
         }
 
-        StatusText = $"Загрузка: {Path.GetFileName(path)}";
-        var content = await WorkspaceService.ReadFileAsync(path);
-        EditorTab tab = new() { FilePath = path, Content = content };
+        var mode = FileTypeHelper.GetDisplayMode(path);
+        if (mode == FileDisplayMode.Executable)
+        {
+            StatusText = $"Запуск: {Path.GetFileName(path)}";
+            try
+            {
+                System.Diagnostics.Process.Start(
+                    new System.Diagnostics.ProcessStartInfo { FileName = path, UseShellExecute = true });
+                await Task.Delay(600);
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Ошибка запуска: {ex.Message}";
+                return;
+            }
+            StatusText = "Готов";
+            return;
+        }
+
+        StatusText = $"Открытие: {Path.GetFileName(path)}";
+
+        string content;
+        if (mode == FileDisplayMode.Binary)
+        {
+            content = string.Empty; 
+        }
+        else
+        {
+            content = await WorkspaceService.ReadFileAsync(path);
+        }
+
+        var tab = new EditorTab { FilePath = path, Content = content, DisplayMode = mode };
         Tabs.Add(tab);
         await ActivateTabAsync(tab);
         StatusText = "Готов";
     }
-
     [RelayCommand]
     private async Task ActivateTabAsync(EditorTab? tab)
     {
         if (tab is null)
-        {
             return;
-        }
         if (ActiveTab != null && FileSaving != null)
         {
             await FileSaving.Invoke();
@@ -526,34 +674,26 @@ internal sealed partial class MainPageModel : ObservableObject
         }
 
         foreach (var t in Tabs)
-        {
             t.IsActive = false;
-        }
 
         tab.IsActive = true;
         ActiveTab = tab;
-        Breadcrumbs = tab.FilePath.Replace(WorkspacePath ?? "", "").TrimStart('\\', '/').Replace("\\", " > ").Replace("/", " > ");
+        Breadcrumbs = tab.FilePath
+            .Replace(WorkspacePath ?? "", "")
+            .TrimStart('\\', '/')
+            .Replace("\\", " > ")
+            .Replace("/", " > ");
         IsEditorVisible = true;
-        var monacoLang = Path.GetExtension(tab.FilePath).ToLowerInvariant() switch
-        {
-            ".c" => "c",
-            ".cpp" or ".h" or ".hpp" => "cpp",
-            ".cs" => "csharp",
-            ".json" => "json",
-            ".xml" or ".xaml" or ".csproj" => "xml",
-            ".md" => "markdown", 
-            _ => "plaintext"     
-        };
-        FileOpened?.Invoke(tab.Content, monacoLang);
+
+        var monacoLang = FileTypeHelper.GetMonacoLanguage(tab.FilePath);
+        FileOpened?.Invoke(tab.Content, monacoLang, tab.DisplayMode);
     }
 
     [RelayCommand]
     internal async Task CloseTabAsync(EditorTab? tab)
     {
         if (tab != null)
-        {
             _ = Tabs.Remove(tab);
-        }
 
         if (Tabs.Count == 0)
         {
@@ -566,21 +706,19 @@ internal sealed partial class MainPageModel : ObservableObject
             await ActivateTabAsync(Tabs.Last());
         }
     }
-
     [RelayCommand]
     private async Task SaveActiveFileAsync()
     {
-        if (ActiveTab is null || FileSaving is null)
-        {
+        if (ActiveTab is null || ActiveTab.DisplayMode != FileDisplayMode.Text)
             return;
-        }
 
-        await FileSaving.Invoke();
+        if (FileSaving != null)
+            await FileSaving.Invoke();
+
         await WorkspaceService.SaveFileAsync(ActiveTab.FilePath, ActiveTab.Content);
         ActiveTab.IsModified = false;
         StatusText = "✅ Сохранено";
     }
-
     [RelayCommand]
     internal async Task GoBackAsync()
     {
@@ -590,15 +728,21 @@ internal sealed partial class MainPageModel : ObservableObject
 
     [RelayCommand]
     internal void ToggleOutput() => IsOutputVisible = !IsOutputVisible;
-
     [RelayCommand]
     internal async Task RunCommandAsync()
     {
         IsOutputVisible = true;
         CompilerOutput = "";
         await SaveActiveFileAsync();
-        await CompileService.RunCompilationAsync(SelectedBuildProfile, ActiveTab?.FilePath ?? "", WorkspacePath ?? "", output => MainThread.BeginInvokeOnMainThread(() => CompilerOutput += output));
+        await CompileService.RunCompilationAsync(
+            SelectedBuildProfile,
+            ActiveTab?.FilePath ?? "",
+            WorkspacePath ?? "",
+            output => MainThread.BeginInvokeOnMainThread(() => CompilerOutput += output));
     }
+
+    [RelayCommand]
+    internal async Task BuildCommandAsync() => await RunCommandAsync();
     private void DetectTerminals()
     {
         TerminalProfiles.Clear();
@@ -606,19 +750,20 @@ internal sealed partial class MainPageModel : ObservableObject
         TerminalProfiles.Add("CMD");
         var wslPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "wsl.exe");
         if (File.Exists(wslPath))
-        {
             TerminalProfiles.Add("WSL");
-        }
         SelectedTerminalProfile = TerminalProfiles[0];
     }
+
     private void UpdateBuildProfilesAndTargets(string path)
     {
         var dir = new DirectoryInfo(path);
         BuildProfiles.Clear();
         BuildTargets.Clear();
-        var hasCSharp = dir.GetFiles("*.csproj", SearchOption.AllDirectories).Length > 0 ||
-                         dir.GetFiles("*.slnx", SearchOption.AllDirectories).Length > 0;
+
+        var hasCSharp   = dir.GetFiles("*.csproj", SearchOption.AllDirectories).Length > 0
+                       || dir.GetFiles("*.slnx", SearchOption.AllDirectories).Length > 0;
         var hasMakefile = dir.GetFiles("Makefile", SearchOption.TopDirectoryOnly).Length > 0;
+
         if (hasCSharp)
         {
             BuildProfiles.Add("Проект C#");
@@ -628,28 +773,20 @@ internal sealed partial class MainPageModel : ObservableObject
         {
             BuildProfiles.Add("Один файл (C/C++)");
             if (hasMakefile)
-            {
                 BuildProfiles.Add("Makefile");
-            }
-            var cFiles = dir.GetFiles("*.*", SearchOption.AllDirectories)
-                            .Where(f => f.Extension == ".c" || f.Extension == ".cpp");
-            foreach (var f in cFiles)
+
+            foreach (var f in dir.GetFiles("*.*", SearchOption.AllDirectories)
+                                  .Where(f => f.Extension is ".c" or ".cpp"))
             {
                 BuildTargets.Add(f.Name);
             }
         }
-        if (BuildProfiles.Count > 0)
-        {
-            SelectedBuildProfile = BuildProfiles[0];
-        }
-        if (BuildTargets.Count > 0)
-        {
-            SelectedBuildTarget = BuildTargets[0];
-        }
-    }
 
-    [RelayCommand]
-    internal async Task BuildCommandAsync() => await RunCommandAsync();
+        if (BuildProfiles.Count > 0)
+            SelectedBuildProfile = BuildProfiles[0];
+        if (BuildTargets.Count > 0)
+            SelectedBuildTarget = BuildTargets[0];
+    }
 }
 
 
@@ -710,7 +847,7 @@ internal sealed partial class WelcomePageModel : ObservableObject
     }
 
     private static async Task GoToWorkspaceAsync(string path) =>
-        await Shell.Current.GoToAsync($"MainPage?path={Uri.EscapeDataString(path)}");
+        await Shell.Current.GoToAsync($"//MainPage?path={Uri.EscapeDataString(path)}");
 }
 
 
@@ -721,154 +858,72 @@ FILE: Pages\MainPage.xaml
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:pm="clr-namespace:CIDE.PageModels"
-             xmlns:m="clr-namespace:CIDE.Models"
+             xmlns:views="clr-namespace:CIDE.Views"
              xmlns:helpers="clr-namespace:CIDE.Helpers"
              x:Class="CIDE.Pages.MainPage"
-             Shell.NavBarIsVisible="False"
              x:ClassModifier="internal"
-             BackgroundColor="#1E1E1E">
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="#06040A">
 
     <ContentPage.Resources>
         <helpers:DepthToMarginConverter x:Key="DepthConverter"/>
     </ContentPage.Resources>
 
-    <!-- IDE Workspace -->
-    <Grid RowDefinitions="40, *, 24">
+    <Grid RowDefinitions="50, *, 24">
 
-        <!-- Toolbar -->
-        <Border Grid.Row="0" BackgroundColor="#252526" StrokeThickness="0" Padding="15,5">
-            <Grid ColumnDefinitions="Auto, Auto, *, Auto, Auto, Auto, Auto" ColumnSpacing="15">
+        <!-- ── Верхний капсульный бар ── -->
+        <views:ToolbarView Grid.Row="0" x:Name="ToolbarPanel" />
 
-                <Button Grid.Column="0" Text="⌂ В меню" Command="{Binding GoBackCommand}" BackgroundColor="Transparent" TextColor="#CCC" Padding="5"/>
+        <!-- ── Основное рабочее пространство ── -->
+        <Grid Grid.Row="1" ColumnDefinitions="250, 1, *" Margin="8,8,8,4">
 
-                <HorizontalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center" Margin="10,0,0,0">
-                    <CheckBox IsChecked="{Binding IsAutoSaveEnabled}" Color="#4EC9B0" WidthRequest="20" HeightRequest="20"/>
-                    <Label Text="Автосохранение" TextColor="#999" FontSize="12" VerticalOptions="Center"/>
-                </HorizontalStackLayout>
+            <!-- Боковая панель: Обозреватель -->
+            <views:SidebarView Grid.Column="0" x:Name="SidebarPanel" />
 
-                <HorizontalStackLayout Grid.Column="3" Spacing="10" VerticalOptions="Center">
-                    <Label Text="Терминал:" TextColor="#888" FontSize="11" VerticalOptions="Center"/>
-                    <Picker ItemsSource="{Binding TerminalProfiles}" SelectedItem="{Binding SelectedTerminalProfile}" 
-                            TextColor="#CCC" BackgroundColor="#1E1E1E" WidthRequest="110" FontSize="12"/>
-                </HorizontalStackLayout>
+            <!-- Тонкий неоновый разделитель -->
+            <BoxView Grid.Column="1" Color="Transparent"/>
 
-                <HorizontalStackLayout Grid.Column="4" Spacing="10" VerticalOptions="Center">
-                    <Label Text="Сборка:" TextColor="#888" FontSize="11" VerticalOptions="Center"/>
-                    <Picker ItemsSource="{Binding BuildProfiles}" SelectedItem="{Binding SelectedBuildProfile}" 
-                            TextColor="#CCC" BackgroundColor="#1E1E1E" WidthRequest="130" FontSize="12"/>
-                    <Picker ItemsSource="{Binding BuildTargets}" SelectedItem="{Binding SelectedBuildTarget}" 
-                            TextColor="#CCC" BackgroundColor="#1E1E1E" WidthRequest="130" FontSize="12"/>
-                </HorizontalStackLayout>
+            <!-- Правая часть: Редактор и Терминал -->
+            <Grid Grid.Column="2" 
+                  x:Name="EditorPanel"
+                  RowDefinitions="*, Auto"
+                  Margin="6,0,0,0">
 
-                <Button Grid.Column="5" Text="🛠 Сборка" Command="{Binding BuildCommand}" 
-                        BackgroundColor="#333" TextColor="#CCC" CornerRadius="4" Padding="15,0" FontSize="12"/>
-                <Button Grid.Column="6" Text="▶ Запуск" Command="{Binding RunCommand}" 
-                        BackgroundColor="#007ACC" TextColor="White" CornerRadius="4" Padding="15,0" FontAttributes="Bold" FontSize="12"/>
+                <views:EditorView Grid.Row="0" x:Name="EditorViewControl" />
+                
+                <views:TerminalView Grid.Row="1" 
+                                    x:Name="OutputPanel"
+                                    Margin="0,8,0,0" />
+            </Grid>
+        </Grid>
+
+        <!-- ── Статус-бар (Пока оставляем тут) ── -->
+        <Border Grid.Row="2"
+                BackgroundColor="#0A0714"
+                StrokeThickness="0">
+            <Grid>
+                <BoxView VerticalOptions="Start" HeightRequest="1" Color="#1D153A"/>
+                <Grid ColumnDefinitions="Auto, Auto, *, Auto, Auto, Auto"
+                      Padding="14,0" ColumnSpacing="16">
+                    
+                    <Border Grid.Column="0" BackgroundColor="#7C3AED" StrokeThickness="0" Padding="8,1" Margin="0,2" VerticalOptions="Center">
+                        <Border.StrokeShape><RoundRectangle CornerRadius="4"/></Border.StrokeShape>
+                        <Label Text="{Binding SelectedBuildProfile}" FontSize="9,5" TextColor="White" VerticalOptions="Center" FontAttributes="Bold"/>
+                    </Border>
+                    
+                    <Label Grid.Column="1" Text="{Binding StatusText}" FontSize="10" TextColor="#ECE9FC" Opacity="0.7" VerticalOptions="Center"/>
+                    
+                    <HorizontalStackLayout Grid.Column="3" Spacing="6" VerticalOptions="Center">
+                        <Ellipse x:Name="SshDot" WidthRequest="6" HeightRequest="6" Fill="#4F477A"/>
+                        <Label Text="SSH STATUS" FontSize="9,5" TextColor="#9E96C4" FontAttributes="Bold"/>
+                    </HorizontalStackLayout>
+                    
+                    <Label Grid.Column="4" Text="LF · UTF-8" FontSize="10" TextColor="#4F477A" VerticalOptions="Center"/>
+                    <Label Grid.Column="5" Text="CIDE v1.0" FontSize="10" TextColor="#4F477A" VerticalOptions="Center"/>
+                </Grid>
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1" ColumnDefinitions="260, 2, *">
-            <!-- Обозреватель -->
-            <Border Grid.Column="0" BackgroundColor="#252526" Stroke="#333" StrokeThickness="1">
-                <Grid RowDefinitions="35, *">
-                    <Label Grid.Row="0" Text="{Binding ExplorerTitle}" TextColor="Gray" FontSize="11" Margin="15,10,0,0" FontAttributes="Bold"/>
-
-                    <CollectionView Grid.Row="1" 
-                        VerticalOptions="Fill"
-                        VerticalScrollBarVisibility="Always" 
-                        ItemsSource="{Binding FlatTree}" 
-                        SelectionMode="Single" 
-                        SelectionChanged="OnTreeSelectionChangedAsync">
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate x:DataType="m:FileNode">
-                                <Grid ColumnDefinitions="20, 24, *" Margin="{Binding TreeMargin}" Padding="0,5">
-                                    <Label Grid.Column="0" Text="{Binding Glyph}" FontFamily="Segoe MDL2 Assets" TextColor="{Binding GlyphColor}" FontSize="10" VerticalOptions="Center" HorizontalOptions="Center"/>
-                                    <Label Grid.Column="1" Text="{Binding IconText}" FontFamily="Segoe MDL2 Assets" TextColor="{Binding IconColor}" FontSize="12" VerticalOptions="Center" HorizontalOptions="Center"/>
-                                    <Label Grid.Column="2" Text="{Binding Name}" TextColor="#CCC" FontSize="13" VerticalOptions="Center" LineBreakMode="TailTruncation"/>
-                                </Grid>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </Grid>
-            </Border>
-
-            <BoxView Grid.Column="1" Color="#333"/>
-
-            <!-- Область редактора и вывода -->
-            <Grid Grid.Column="2" RowDefinitions="35, 24, *, Auto">
-
-                <!-- Панель вкладок -->
-                <Border Grid.Row="0" BackgroundColor="#2D2D2D" Stroke="#333" StrokeThickness="1">
-                    <ScrollView Orientation="Horizontal">
-                        <HorizontalStackLayout BindableLayout.ItemsSource="{Binding Tabs}">
-                            <BindableLayout.ItemTemplate>
-                                <DataTemplate x:DataType="m:EditorTab">
-                                    <Border BackgroundColor="{Binding BackgroundBrush}" Stroke="#333" StrokeThickness="1" Padding="15,0,5,0">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding BindingContext.ActivateTabCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" CommandParameter="{Binding}"/>
-                                        </Border.GestureRecognizers>
-                                        <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
-                                            <Label Text="{Binding DisplayName}" TextColor="#CCC" VerticalOptions="Center"/>
-                                            <Button Text="✕" WidthRequest="30" HeightRequest="30" Padding="0" BackgroundColor="Transparent" TextColor="#CCC"
-                                                    Command="{Binding BindingContext.CloseTabCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" CommandParameter="{Binding}"/>
-                                        </HorizontalStackLayout>
-                                    </Border>
-                                </DataTemplate>
-                            </BindableLayout.ItemTemplate>
-                        </HorizontalStackLayout>
-                    </ScrollView>
-                </Border>
-
-                <!-- Хлебные крошки -->
-                <Border Grid.Row="1" BackgroundColor="#1E1E1E" StrokeThickness="1" Stroke="#2D2D2D" Padding="15,4">
-                    <Label Text="{Binding Breadcrumbs}" TextColor="Gray" FontSize="11" VerticalOptions="Center"/>
-                </Border>
-
-                <!-- Заглушка (когда нет открытых файлов) -->
-                <VerticalStackLayout Grid.Row="2" VerticalOptions="Center" HorizontalOptions="Center" Spacing="15">
-                    <VerticalStackLayout.Triggers>
-                        <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding IsEditorVisible}" Value="True">
-                            <Setter Property="IsVisible" Value="False" />
-                        </DataTrigger>
-                    </VerticalStackLayout.Triggers>
-
-                    <Label Text="CIDE" FontSize="80" TextColor="#252526" FontAttributes="Bold" HorizontalOptions="Center"/>
-                    <Label Text="Выберите файл в обозревателе для редактирования" TextColor="#333333" FontSize="14" HorizontalOptions="Center"/>
-                </VerticalStackLayout>
-
-                <!-- Движок Monaco (WebView) -->
-                <WebView Grid.Row="2" 
-                         x:Name="MonacoView"
-                         IsVisible="{Binding IsEditorVisible}"
-                         Margin="0"/>
-
-                <!-- Панель вывода (Скрываемая) -->
-                <Grid Grid.Row="3" RowDefinitions="30, *" BackgroundColor="#1E1E1E" IsVisible="{Binding IsOutputVisible}" HeightRequest="200">
-                    <Border Grid.Row="0" BackgroundColor="#2D2D2D" Stroke="#333" StrokeThickness="1">
-                        <HorizontalStackLayout Spacing="15" Padding="15,0">
-                            <Label Text="ВЫВОД" TextColor="#CCC" VerticalOptions="Center" FontAttributes="Bold" FontSize="11"/>
-                            <Label Text="ТЕРМИНАЛ" TextColor="Gray" VerticalOptions="Center" FontSize="11"/>
-                            <Label Text="ПРОБЛЕМЫ" TextColor="Gray" VerticalOptions="Center" FontSize="11"/>
-                            <Button Text="✕" Command="{Binding ToggleOutputCommand}" TextColor="Gray" BackgroundColor="Transparent" Padding="5,0" Margin="20,0,0,0"/>
-                        </HorizontalStackLayout>
-                    </Border>
-                    <ScrollView Grid.Row="1" Padding="10">
-                        <Label x:Name="OutputLabel" TextColor="#D4D4D4" FontFamily="Consolas" FontSize="12"/>
-                    </ScrollView>
-                </Grid>
-            </Grid>
-        </Grid>
-
-        <!-- StatusBar -->
-        <Grid Grid.Row="2" BackgroundColor="#007ACC" ColumnDefinitions="*, Auto, Auto" Padding="15,0">
-            <Label Grid.Column="0" Text="{Binding StatusText}" TextColor="White" FontSize="11" VerticalOptions="Center"/>
-            <HorizontalStackLayout Grid.Column="1" Spacing="15" Margin="0,0,20,0" VerticalOptions="Center">
-                <Label Text="LF" TextColor="White" FontSize="11"/>
-                <Label Text="UTF-8" TextColor="White" FontSize="11"/>
-            </HorizontalStackLayout>
-            <Label Grid.Column="2" Text="{Binding SelectedBuildProfile}" TextColor="White" FontSize="11" VerticalOptions="Center" FontAttributes="Bold"/>
-        </Grid>
     </Grid>
 </ContentPage>
 
@@ -877,166 +932,144 @@ FILE: Pages\MainPage.xaml
 FILE: Pages\MainPage.xaml.cs
 ======================================================================
 
-using System.Text.Json;
 using CIDE.Models;
-using CIDE.Services;
 using CIDE.PageModels;
+using System.ComponentModel;
+using Microsoft.AspNetCore.Components.WebView.Maui;
+
 namespace CIDE.Pages;
+
 internal sealed partial class MainPage : ContentPage
 {
     private readonly MainPageModel _model;
+    private bool _isOutputAnimPlaying;
+
     public MainPage(MainPageModel model)
     {
         InitializeComponent();
         _model = model;
         BindingContext = _model;
-        _model.FileOpened += OnFileOpenedAsync;
-        _model.FileSaving += OnFileSavingAsync;
+
         _model.PropertyChanged += OnModelPropertyChanged;
-        MonacoView.Navigating += OnMonacoViewNavigating;
-        LoadMonacoEditorAsync();
+        _model.FlatTree.CollectionChanged += OnFlatTreeChanged;
+        ToolbarPanel.Opacity = 0;
+        ToolbarPanel.TranslationY = -45;
+
+        SidebarPanel.Opacity = 0;
+        SidebarPanel.TranslationX = -260;
+
+        EditorPanel.Opacity = 0;
+        EditorPanel.TranslationX = 60;
+        EditorPanel.Scale = 0.98;
     }
-    private void OnMonacoViewNavigating(object? sender, WebNavigatingEventArgs e)
+    private void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.Url is { } url)
+        if (e.PropertyName == nameof(_model.IsOutputVisible))
         {
-            if (url.StartsWith("cide://modified", StringComparison.OrdinalIgnoreCase))
+            if (!_isOutputAnimPlaying)
             {
-                e.Cancel = true;
-                if (_model.ActiveTab is { } tab)
-                {
-                    tab.IsModified = true;
-                }
-            }
-            else if (url.StartsWith("cide://save", StringComparison.OrdinalIgnoreCase))
-            {
-                e.Cancel = true;
-                if (_model.SaveActiveFileCommand.CanExecute(null))
-                {
-                    _model.SaveActiveFileCommand.Execute(null);
-                }
+                _ = AnimateTerminalToggleAsync(_model.IsOutputVisible);
             }
         }
     }
-    private async void LoadMonacoEditorAsync()
+    private async Task AnimateTerminalToggleAsync(bool isVisible)
     {
-        using var stream = await FileSystem.OpenAppPackageFileAsync("monaco.html");
-        using StreamReader reader = new(stream);
-        var html = await reader.ReadToEndAsync();
-        MonacoView.Source = new HtmlWebViewSource { Html = html };
+        _isOutputAnimPlaying = true;
+
+        if (isVisible)
+        {
+            OutputPanel.Opacity = 0;
+            OutputPanel.TranslationY = 150;
+            _ = await Task.WhenAll(
+                EditorPanel.TranslateToAsync(0, -10, 120, Easing.CubicOut),
+                EditorPanel.ScaleToAsync(0.99, 120, Easing.CubicOut)
+            );
+            _ = await Task.WhenAll(
+                OutputPanel.FadeToAsync(1, 280, Easing.CubicOut),
+                OutputPanel.TranslateToAsync(0, 0, 280, Easing.SpringOut),
+                EditorPanel.TranslateToAsync(0, 4, 180, Easing.SpringOut),
+                EditorPanel.ScaleToAsync(1.0, 180, Easing.SpringOut)
+            );
+            _ = await EditorPanel.TranslateToAsync(0, 0, 100, Easing.CubicIn);
+        }
+        else
+        {
+            _ = await Task.WhenAll(
+                EditorPanel.TranslateToAsync(0, 12, 140, Easing.CubicIn),
+                EditorPanel.ScaleToAsync(1.01, 140, Easing.CubicIn)
+            );
+
+            _ = await Task.WhenAll(
+                EditorPanel.TranslateToAsync(0, 0, 240, Easing.SpringOut),
+                EditorPanel.ScaleToAsync(1.0, 240, Easing.SpringOut)
+            );
+        }
+
+        _isOutputAnimPlaying = false;
     }
-    private void OnTreeSelectionChangedAsync(object? sender, SelectionChangedEventArgs e)
+    private void OnFlatTreeChanged(object? sender,
+        System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
-        if (e.CurrentSelection is { Count: > 0 } selection && selection[0] is FileNode node)
+        if (e.Action != System.Collections.Specialized.NotifyCollectionChangedAction.Add)
         {
-            _model.SelectNodeCommand.Execute(node);
-            ((CollectionView)sender!).SelectedItem = null;
-        }
-    }
-    private async void OnFileOpenedAsync(string content, string language)
-    {
-        try
-        {
-            content ??= "";
-            var bytes = System.Text.Encoding.UTF8.GetBytes(content);
-            var base64Content = Convert.ToBase64String(bytes);
-            var jsScript = $@"
-            try {{
-                var binaryStr = window.atob('{base64Content}');
-                var bytes = new Uint8Array(binaryStr.length);
-                for (var i = 0; i < binaryStr.length; i++) {{
-                    bytes[i] = binaryStr.charCodeAt(i);
-                }}
-                var decodedStr = new TextDecoder('utf-8').decode(bytes);
-                // Вызываем твой метод из monaco.html!
-                if (typeof setEditorText === 'function') {{
-                    setEditorText(decodedStr, '{language}');
-                }} else if (window.editor) {{
-                    window.editor.setValue(decodedStr);
-                    monaco.editor.setModelLanguage(window.editor.getModel(), '{language}');
-                }}
-            }} catch(e) {{ console.error('JS Error:', e); }}
-        ";
-            _ = await MonacoView.EvaluateJavaScriptAsync(jsScript);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Ошибка вставки: {ex.Message}");
-        }
-    }
-    private async Task OnFileSavingAsync()
-    {
-        try
-        {
-            var jsScript = @"
-            (function() {
-                try {
-                    var text = typeof getEditorText === 'function' ? getEditorText() : (window.editor ? window.editor.getValue() : '');
-                    var bytes = new TextEncoder().encode(text);
-                    var binaryStr = '';
-                    for (var i = 0; i < bytes.byteLength; i++) {
-                        binaryStr += String.fromCharCode(bytes[i]);
-                    }
-                    return window.btoa(binaryStr);
-                } catch(e) { return ''; }
-            })();
-        ";
-            var rawBase64 = await MonacoView.EvaluateJavaScriptAsync(jsScript);
-            if (!string.IsNullOrEmpty(rawBase64) && rawBase64 != "null" && _model.ActiveTab is { } tab)
-            {
-                var cleanBase64 = rawBase64.Trim('"');
-                if (!string.IsNullOrEmpty(cleanBase64))
-                {
-                    var bytes = Convert.FromBase64String(cleanBase64);
-                    tab.Content = System.Text.Encoding.UTF8.GetString(bytes);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Ошибка сохранения кода: {ex.Message}");
-        }
-    }
-    private void OnModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(MainPageModel.CompilerOutput))
-        {
-            UpdateColoredOutput(_model.CompilerOutput);
-        }
-    }
-    private void OnSaveHotkeyPressed(object? sender, EventArgs e)
-    {
-        if (_model.SaveActiveFileCommand.CanExecute(null))
-        {
-            _model.SaveActiveFileCommand.Execute(null);
-        }
-    }
-    private void UpdateColoredOutput(string newOutput)
-    {
-        if (string.IsNullOrEmpty(newOutput))
-        {
-            OutputLabel.FormattedText = null;
             return;
         }
-        var formatted = new FormattedString();
-        var lines = newOutput.Split('\n');
-        foreach (var line in lines)
+
+        _ = AnimateNewTreeItemsAsync(e.NewItems?.Count ?? 0);
+    }
+
+    private static async Task AnimateNewTreeItemsAsync(int count)
+    {
+        await Task.Delay(30);
+        for (var i = 0; i < count; i++)
         {
-            var color = line switch
-            {
-                _ when line.StartsWith("$", StringComparison.OrdinalIgnoreCase) ||
-                       line.StartsWith("[", StringComparison.OrdinalIgnoreCase) => Color.FromArgb("#569CD6"),
-                _ when line.Contains("error", StringComparison.OrdinalIgnoreCase) ||
-                       line.Contains("Ошибка", StringComparison.OrdinalIgnoreCase) => Color.FromArgb("#F44336"),
-                _ when line.Contains("warning", StringComparison.OrdinalIgnoreCase) ||
-                       line.Contains("Предупреждение", StringComparison.OrdinalIgnoreCase) => Color.FromArgb("#FFC107"),
-                _ when line.Contains("success", StringComparison.OrdinalIgnoreCase) ||
-                       line.Contains("Успешно", StringComparison.OrdinalIgnoreCase) => Color.FromArgb("#4CAF50"),
-                _ => Color.FromArgb("#D4D4D4")
-            };
-            formatted.Spans.Add(new Span { Text = line + "\n", TextColor = color });
+            await Task.Delay(20);
         }
-        OutputLabel.FormattedText = formatted;
+    }
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        _ = RunChainIntroAnimationAsync();
+    }
+
+    private async Task RunChainIntroAnimationAsync()
+    {
+        _ = await Task.WhenAll(
+            ToolbarPanel.FadeToAsync(1, 350, Easing.CubicOut),
+            ToolbarPanel.TranslateToAsync(0, 0, 350, Easing.CubicOut)
+        );
+        var btnBuild = ToolbarPanel.FindByName<View>("BtnBuild");
+        var btnRun = ToolbarPanel.FindByName<View>("BtnRun");
+        var btns = new View[] { btnBuild, btnRun }.Where(b => b != null).ToArray();
+        foreach (var b in btns)
+        {
+            b.Opacity = 0;
+            b.TranslationX = 12;
+        }
+
+        var btnTasks = btns.Select(async (b, idx) =>
+        {
+            await Task.Delay(idx * 50);
+            _ = await Task.WhenAll(
+                b.FadeToAsync(1, 250, Easing.CubicOut),
+                b.TranslateToAsync(0, 0, 250, Easing.CubicOut)
+            );
+        });
+        var sidebarTask = Task.WhenAll(
+            SidebarPanel.FadeToAsync(1, 450, Easing.CubicOut),
+            SidebarPanel.TranslateToAsync(0, 0, 450, Easing.CubicOut)
+        );
+
+        await Task.WhenAll(Task.WhenAll(btnTasks), sidebarTask);
+        _ = await Task.WhenAll(
+            EditorPanel.FadeToAsync(1, 300, Easing.CubicOut),
+            EditorPanel.TranslateToAsync(18, 0, 180, Easing.CubicOut),
+            EditorPanel.ScaleToAsync(0.99, 180, Easing.CubicOut)
+        );
+        _ = await Task.WhenAll(
+            EditorPanel.TranslateToAsync(0, 0, 350, Easing.SpringOut),
+            EditorPanel.ScaleToAsync(1.0, 350, Easing.SpringOut)
+        );
     }
 }
 
@@ -1050,11 +1083,101 @@ FILE: Pages\SettingsPage.xaml
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="CIDE.Pages.SettingsPage"
              x:ClassModifier="internal"
-             Title="Настройки">
-    <VerticalStackLayout Spacing="20" Padding="40">
-        <Label Text="⚙ Настройки CIDE" FontSize="32" FontAttributes="Bold"/>
-        <Label Text="Здесь будет менеджер SSH подключений, настройки WSL и управление плагинами." TextColor="Gray" />
-    </VerticalStackLayout>
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="#0A0910">
+
+    <Grid RowDefinitions="56, *">
+
+        <!-- Хедер -->
+        <Border Grid.Row="0"
+                BackgroundColor="#0D0B18"
+                StrokeThickness="0">
+            <Grid>
+                <HorizontalStackLayout Spacing="10" Padding="24,0" VerticalOptions="Center">
+                    <Label Text="⚙" FontSize="18" TextColor="#6C63FF" VerticalOptions="Center"/>
+                    <Label Text="Настройки" FontSize="16" FontAttributes="Bold"
+                           TextColor="#C4BAFF" VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+                <BoxView VerticalOptions="End" HeightRequest="1" Color="#1E1A2E"/>
+            </Grid>
+        </Border>
+
+        <!-- Контент -->
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="32,28" Spacing="24">
+
+                <!-- SSH секция -->
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="SSH ПРОФИЛИ" FontSize="9" FontAttributes="Bold"
+                           TextColor="#2A2440" CharacterSpacing="2"/>
+
+                    <Border BackgroundColor="#0F0D1C"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 8"
+                            Padding="20,16">
+                        <Border.Stroke>
+                            <SolidColorBrush Color="#1E1A2E"/>
+                        </Border.Stroke>
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="SSH подключение к Linux серверу"
+                                   FontSize="13" FontAttributes="Bold"
+                                   TextColor="#C4BAFF"/>
+                            <Label Text="Здесь будет менеджер SSH профилей, настройки ключей и управление удалёнными рабочими папками."
+                                   FontSize="12" TextColor="#3D3660"/>
+                            <Label Text="В разработке…"
+                                   FontSize="11" TextColor="#6C63FF"
+                                   Margin="0,4,0,0"/>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- Компилятор -->
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="КОМПИЛЯТОР" FontSize="9" FontAttributes="Bold"
+                           TextColor="#2A2440" CharacterSpacing="2"/>
+
+                    <Border BackgroundColor="#0F0D1C"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 8"
+                            Padding="20,16">
+                        <Border.Stroke>
+                            <SolidColorBrush Color="#1E1A2E"/>
+                        </Border.Stroke>
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="Тулчейн MinGW / MSVC"
+                                   FontSize="13" FontAttributes="Bold"
+                                   TextColor="#C4BAFF"/>
+                            <Label Text="Настройка путей к компиляторам C/C++/C# и параметров сборки."
+                                   FontSize="12" TextColor="#3D3660"/>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- Редактор -->
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="РЕДАКТОР" FontSize="9" FontAttributes="Bold"
+                           TextColor="#2A2440" CharacterSpacing="2"/>
+
+                    <Border BackgroundColor="#0F0D1C"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 8"
+                            Padding="20,16">
+                        <Border.Stroke>
+                            <SolidColorBrush Color="#1E1A2E"/>
+                        </Border.Stroke>
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="Monaco Editor"
+                                   FontSize="13" FontAttributes="Bold"
+                                   TextColor="#C4BAFF"/>
+                            <Label Text="Размер шрифта, тема, отступы и другие настройки редактора."
+                                   FontSize="12" TextColor="#3D3660"/>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
 </ContentPage>
 
 
@@ -1082,7 +1205,8 @@ FILE: Pages\WelcomePage.xaml
              xmlns:helpers="clr-namespace:CIDE.Helpers"
              x:Class="CIDE.Pages.WelcomePage"
              x:ClassModifier="internal"
-             Shell.NavBarIsVisible="False">
+             Shell.NavBarIsVisible="False"
+             x:Name="Root">
 
     <Grid ColumnDefinitions="300, *">
         <Grid.Background>
@@ -1107,7 +1231,7 @@ FILE: Pages\WelcomePage.xaml
                         <DataTemplate x:DataType="m:RecentEntry">
                             <Grid Padding="20,10">
                                 <Grid.GestureRecognizers>
-                                    <TapGestureRecognizer Command="{Binding BindingContext.OpenRecentCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" CommandParameter="{Binding}"/>
+                                    <TapGestureRecognizer Command="{Binding Source={x:Reference Root}, Path=BindingContext.OpenRecentCommand}" CommandParameter="{Binding}"/>
                                 </Grid.GestureRecognizers>
                                 <Grid ColumnDefinitions="30, *">
                                     <Label Grid.Column="0" Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" TextColor="#E8C56D" FontSize="16" VerticalOptions="Center"/>
@@ -1175,8 +1299,6 @@ FILE: Pages\WelcomePage.xaml
 FILE: Pages\WelcomePage.xaml.cs
 ======================================================================
 
-using CIDE.PageModels;
-
 namespace CIDE.Pages;
 
 internal sealed partial class WelcomePage : ContentPage
@@ -1186,17 +1308,14 @@ internal sealed partial class WelcomePage : ContentPage
         InitializeComponent();
         BindingContext = model;
     }
-
     protected override async void OnAppearing()
     {
         base.OnAppearing();
         await AnimationHelper.FadeInWithShiftAsync(CardFolder, 600);
         await AnimationHelper.FadeInWithShiftAsync(CardSolution, 800);
     }
-
     private async void OnCardFolderTappedAsync(object? sender, TappedEventArgs e) =>
         await AnimationHelper.WaveClickAsync(CardFolder);
-
     private async void OnCardSolutionTappedAsync(object? sender, TappedEventArgs e) =>
         await AnimationHelper.WaveClickAsync(CardSolution);
 }
@@ -1223,6 +1342,7 @@ FILE: Platforms\Windows\App.xaml.cs
 using System.Runtime.Versioning;
 using Microsoft.UI.Xaml;
 namespace CIDE.WinUI;
+
 [SupportedOSPlatform("windows10.0.22000.0")]
 public sealed partial class App : MauiWinUIApplication
 {
@@ -1239,15 +1359,24 @@ FILE: Resources\Styles\Styles.xaml
 <ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <!-- ������� ������� CIDE -->
-    <Color x:Key="BgPrimary">#1E1E1E</Color>
-    <Color x:Key="BgSecondary">#252526</Color>
-    <Color x:Key="TextPrimary">#D4D4D4</Color>
-    <Color x:Key="TextSecondary">#858585</Color>
-    <Color x:Key="Accent">#007ACC</Color>
-    <Color x:Key="BorderColor">#333333</Color>
+    <!-- Токены цвета (Dark Neon Theme) -->
+    <Color x:Key="BgPrimary">#06040A</Color>
+    <Color x:Key="BgSecondary">#0A0714</Color>
+    <Color x:Key="BgTertiary">#110C24</Color>
 
-    <!-- ����� �� ��������� -->
+    <Color x:Key="TextPrimary">#ECE9FC</Color>
+    <Color x:Key="TextSecondary">#9E96C4</Color>
+
+    <Color x:Key="NeonCyan">#00F5FF</Color>
+    <Color x:Key="NeonMagenta">#FF2A85</Color>
+    <Color x:Key="NeonPurple">#7C3AED</Color>
+    <Color x:Key="NeonGreen">#00FFC2</Color>
+    <Color x:Key="NeonYellow">#FFD700</Color>
+
+    <Color x:Key="BorderDark">#1D153A</Color>
+    <Color x:Key="BorderLight">#2D1A54</Color>
+
+    <!-- Стили по умолчанию -->
     <Style TargetType="Page" ApplyToDerivedTypes="True">
         <Setter Property="BackgroundColor" Value="{StaticResource BgPrimary}" />
     </Style>
@@ -1257,24 +1386,61 @@ FILE: Resources\Styles\Styles.xaml
         <Setter Property="FontFamily" Value="OpenSansRegular" />
     </Style>
 
-    <Style TargetType="Button">
+    <!-- Базовый стиль кнопок в тулбаре -->
+    <Style TargetType="Button" x:Key="ToolbarButton">
         <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
         <Setter Property="BackgroundColor" Value="Transparent" />
-        <Setter Property="CornerRadius" Value="4" />
-        <Setter Property="FontFamily" Value="OpenSansRegular" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="FontFamily" Value="OpenSansSemibold" />
+        <Setter Property="HeightRequest" Value="28" />
+        <Setter Property="Padding" Value="8,0" />
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
                     <VisualState x:Name="Normal" />
                     <VisualState x:Name="PointerOver">
                         <VisualState.Setters>
-                            <Setter Property="BackgroundColor" Value="#3E3E42" />
+                            <Setter Property="BackgroundColor" Value="#1A1138" />
+                            <Setter Property="TextColor" Value="{StaticResource NeonCyan}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Pressed">
+                        <VisualState.Setters>
+                            <Setter Property="BackgroundColor" Value="#2D1A54" />
+                            <Setter Property="Scale" Value="0.95" />
                         </VisualState.Setters>
                     </VisualState>
                 </VisualStateGroup>
             </VisualStateGroupList>
         </Setter>
     </Style>
+
+    <!-- Акцентная кнопка (Например, "Запуск") -->
+    <Style TargetType="Button" x:Key="AccentButton">
+        <Setter Property="TextColor" Value="#FFFFFF" />
+        <Setter Property="BackgroundColor" Value="#7C3AED" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="FontFamily" Value="OpenSansSemibold" />
+        <Setter Property="VisualStateManager.VisualStateGroups">
+            <VisualStateGroupList>
+                <VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal" />
+                    <VisualState x:Name="PointerOver">
+                        <VisualState.Setters>
+                            <Setter Property="BackgroundColor" Value="#FF2A85" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Pressed">
+                        <VisualState.Setters>
+                            <Setter Property="BackgroundColor" Value="#120A28" />
+                            <Setter Property="Scale" Value="0.93" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateGroupList>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>
 
 
@@ -1330,7 +1496,7 @@ public static class CompileService
             onOutput($"$ {makePath}\n");
             _ = await ExecuteProcessAsync(makePath, "", workspacePath, onOutput);
         }
-        else if (profile == "Проект C# (.slnx/.csproj)")
+        else if (profile == "Проект C#")
         {
             onOutput("$ dotnet run\n");
             _ = await ExecuteProcessAsync("dotnet", "run", workspacePath, onOutput);
@@ -1633,6 +1799,430 @@ public static class WorkspaceService
 
 
 ======================================================================
+FILE: Views\EditorView.xaml
+======================================================================
+
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="CIDE.Views.EditorView">
+
+    <Grid RowDefinitions="36, 24, *">
+        <!-- Панель вкладок -->
+        <Border Grid.Row="0"
+                BackgroundColor="#0A0714"
+                StrokeThickness="1">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="8"/>
+            </Border.StrokeShape>
+            <Border.Stroke>
+                <SolidColorBrush Color="#1D153A"/>
+            </Border.Stroke>
+            <Grid>
+                <HorizontalStackLayout Padding="14,0" Spacing="8" VerticalOptions="Center">
+                     <!-- Точка-индикатор типа файла (светящаяся) -->
+                     <Ellipse WidthRequest="6" HeightRequest="6"
+                              Fill="#00F5FF"
+                              VerticalOptions="Center"/>
+                     <Label Text="Редактор CIDE"
+                            FontSize="12"
+                            TextColor="#ECE9FC"
+                            VerticalOptions="Center"
+                            FontFamily="OpenSansSemibold"/>
+                </HorizontalStackLayout>
+                <BoxView VerticalOptions="End" HeightRequest="1" Color="#1D153A"/>
+            </Grid>
+        </Border>
+
+        <!-- Хлебные крошки -->
+        <Border Grid.Row="1"
+                BackgroundColor="#0C081A"
+                StrokeThickness="1" Padding="14,0"> 
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="0"/>
+            </Border.StrokeShape>
+            <Border.Stroke>
+                <SolidColorBrush Color="#1D153A"/>
+            </Border.Stroke>
+            <Grid>
+                <Label Text="{Binding Breadcrumbs}"
+                       TextColor="#ECE9FC"
+                       Opacity="0.6"
+                       FontSize="10"
+                       VerticalOptions="Center"
+                       FontFamily="Consolas"/>
+                <BoxView VerticalOptions="End" HeightRequest="1" Color="#1D153A"/>
+            </Grid>
+        </Border>
+
+        <!-- Зона редактора Blazor / Monaco -->
+        <Border Grid.Row="2"
+                BackgroundColor="#06040A"
+                StrokeThickness="1">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="8"/>
+            </Border.StrokeShape>
+            <Border.Stroke>
+                <SolidColorBrush Color="#1D153A"/>
+            </Border.Stroke>
+            <Grid>
+                <!-- Красивая заглушка при отсутствии файлов -->
+                <VerticalStackLayout VerticalOptions="Center"
+                                     HorizontalOptions="Center"
+                                     Spacing="14">
+                    <VerticalStackLayout.Triggers>
+                        <DataTrigger TargetType="VerticalStackLayout"
+                                     Binding="{Binding IsEditorVisible}" Value="True">
+                            <Setter Property="IsVisible" Value="False"/>
+                        </DataTrigger>
+                    </VerticalStackLayout.Triggers>
+                    
+                    <HorizontalStackLayout Spacing="3" HorizontalOptions="Center">
+                        <Label Text="C" FontSize="78" FontAttributes="Bold" TextColor="#1F1538"/>
+                        <Label Text="I" FontSize="78" FontAttributes="Bold" TextColor="#130D26"/>
+                        <Label Text="D" FontSize="78" FontAttributes="Bold" TextColor="#1F1538"/>
+                        <Label Text="E" FontSize="78" FontAttributes="Bold" TextColor="#130D26"/>
+                    </HorizontalStackLayout>
+                    <Label Text="ВЫБЕРИТЕ ФАЙЛ ДЛЯ РЕДАКТИРОВАНИЯ"
+                           TextColor="#4F477A" FontSize="11"
+                           HorizontalOptions="Center"
+                           CharacterSpacing="2" FontAttributes="Bold"/>
+                </VerticalStackLayout>
+
+                <!-- Monaco редактор (через BlazorWebView, создается программно в C#) -->
+                <Grid x:Name="EditorHost" IsVisible="{Binding IsEditorVisible}"/>
+            </Grid>
+        </Border>
+    </Grid>
+
+</ContentView>
+
+
+======================================================================
+FILE: Views\EditorView.xaml.cs
+======================================================================
+
+using Microsoft.AspNetCore.Components.WebView.Maui;
+using Microsoft.Maui.Controls;
+
+namespace CIDE.Views;
+
+public partial class EditorView : ContentView
+{
+    public EditorView()
+    {
+        InitializeComponent();
+        var blazorWebView = new BlazorWebView
+        {
+            HostPage = "index.html"
+        };
+        blazorWebView.RootComponents.Add(new RootComponent
+        {
+            Selector = "#app",
+            ComponentType = typeof(MainEditor)
+        });
+        EditorHost.Children.Add(blazorWebView);
+    }
+}
+
+
+======================================================================
+FILE: Views\SidebarView.xaml
+======================================================================
+
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:m="clr-namespace:CIDE.Models"
+             x:Class="CIDE.Views.SidebarView">
+
+    <!-- Боковая панель: Обозреватель -->
+    <Border BackgroundColor="#0A0714"
+            StrokeThickness="1">
+        <Border.StrokeShape>
+            <RoundRectangle CornerRadius="10"/>
+        </Border.StrokeShape>
+        <Border.Stroke>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#2D1A54" Offset="0"/>
+                <GradientStop Color="#120A28" Offset="1"/>
+            </LinearGradientBrush>
+        </Border.Stroke>
+        
+        <Grid RowDefinitions="36, *">
+
+            <!-- Шапка обозревателя -->
+            <Grid Grid.Row="0" Padding="14,0" BackgroundColor="#0C081A">
+                <Label Text="{Binding ExplorerTitle}"
+                       FontSize="10" FontAttributes="Bold"
+                       TextColor="#00F5FF" CharacterSpacing="2"
+                       VerticalOptions="Center"/>
+                <BoxView VerticalOptions="End" HeightRequest="1" Color="#1D153A"/>
+            </Grid>
+
+            <!-- Дерево файлов -->
+            <CollectionView Grid.Row="1"
+                            ItemsSource="{Binding FlatTree}"
+                            SelectionMode="Single"
+                            SelectionChanged="OnTreeSelectionChangedAsync"
+                            x:Name="FileTree"
+                            Margin="0,4">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="m:FileNode">
+                        <Grid ColumnDefinitions="14, 20, *" Padding="10,6" Margin="{Binding Depth, Converter={StaticResource DepthConverter}}">
+                            <!-- Шеврон папки -->
+                            <Label Grid.Column="0"
+                                   Text="{Binding Glyph}"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   TextColor="#9E96C4"
+                                   FontSize="9"
+                                   VerticalOptions="Center"
+                                   HorizontalOptions="Center"/>
+                            
+                            <!-- Иконка файла/папки -->
+                            <Label Grid.Column="1"
+                                   Text="{Binding IconText}"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   TextColor="{Binding IconColor}"
+                                   FontSize="13"
+                                   VerticalOptions="Center"
+                                   HorizontalOptions="Center"/>
+                            
+                            <!-- Имя файла -->
+                            <Label Grid.Column="2"
+                                   Text="{Binding Name}"
+                                   TextColor="#ECE9FC"
+                                   FontSize="12"
+                                   VerticalOptions="Center"
+                                   LineBreakMode="TailTruncation"/>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+    </Border>
+
+</ContentView>
+
+
+======================================================================
+FILE: Views\SidebarView.xaml.cs
+======================================================================
+
+using CIDE.Models;
+using CIDE.PageModels;
+using Microsoft.Maui.Controls;
+
+namespace CIDE.Views;
+
+public partial class SidebarView : ContentView
+{
+    public SidebarView() => InitializeComponent();
+    private void OnTreeSelectionChangedAsync(object? sender, SelectionChangedEventArgs e)
+    {
+        if (e.CurrentSelection is { Count: > 0 } selection && selection[0] is FileNode node && BindingContext is MainPageModel model)
+        {
+            model.SelectNodeCommand.Execute(node);
+        }
+        if (sender is CollectionView cv)
+        {
+            cv.SelectedItem = null;
+        }
+    }
+}
+
+
+======================================================================
+FILE: Views\TerminalView.xaml
+======================================================================
+
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="CIDE.Views.TerminalView">
+
+    <!-- Нижняя панель: Терминал Вывода -->
+    <Grid RowDefinitions="32, *"
+          BackgroundColor="#06040A"
+          IsVisible="{Binding IsOutputVisible}"
+          HeightRequest="200">
+        
+        <Border Grid.Row="0"
+                BackgroundColor="#0A0714"
+                StrokeThickness="1">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="8"/>
+            </Border.StrokeShape>
+            <Border.Stroke>
+                <SolidColorBrush Color="#1D153A"/>
+            </Border.Stroke>
+            <Grid>
+                <HorizontalStackLayout Spacing="22" Padding="14,0">
+                    <Label Text="ВЫВОД КОМПИЛЯЦИИ" FontSize="10" FontAttributes="Bold"
+                           TextColor="#00F5FF" VerticalOptions="Center"
+                           CharacterSpacing="1"/>
+                    <Label Text="ПРОБЛЕМЫ" FontSize="10"
+                           TextColor="#4F477A" VerticalOptions="Center"
+                           CharacterSpacing="1"/>
+                </HorizontalStackLayout>
+                
+                <Button Text="✕" HorizontalOptions="End"
+                        Style="{StaticResource ToolbarButton}"
+                        TextColor="#FF2A85"
+                        Command="{Binding ToggleOutputCommand}"
+                        WidthRequest="30" HeightRequest="30"
+                        Padding="0"/>
+                <BoxView VerticalOptions="End" HeightRequest="1" Color="#1D153A"/>
+            </Grid>
+        </Border>
+        
+        <!-- Текст вывода -->
+        <Border Grid.Row="1"
+                BackgroundColor="#07050C"
+                StrokeThickness="1">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="8"/>
+            </Border.StrokeShape>
+            <Border.Stroke>
+                <SolidColorBrush Color="#1D153A"/>
+            </Border.Stroke>
+            <ScrollView Padding="14,10">
+                <Label Text="{Binding CompilerOutput}"
+                       TextColor="#00FFC2"
+                       FontFamily="Consolas"
+                       FontSize="11.5"
+                       LineBreakMode="CharacterWrap"/>
+            </ScrollView>
+        </Border>
+    </Grid>
+
+</ContentView>
+
+
+======================================================================
+FILE: Views\TerminalView.xaml.cs
+======================================================================
+
+namespace CIDE.Views;
+
+public partial class TerminalView : ContentView
+{
+    public TerminalView() => InitializeComponent();
+}
+
+
+======================================================================
+FILE: Views\ToolbarView.xaml
+======================================================================
+
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="CIDE.Views.ToolbarView">
+
+    <!-- ── Тулбар (Верхний капсульный бар) ── -->
+    <Border BackgroundColor="#0A0714"
+            StrokeThickness="1"
+            Margin="8,6,8,0"
+            HeightRequest="38">
+        <Border.StrokeShape>
+            <RoundRectangle CornerRadius="10"/>
+        </Border.StrokeShape>
+        <Border.Stroke>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                <GradientStop Color="#2D1A54" Offset="0"/>
+                <GradientStop Color="#120A28" Offset="1"/>
+            </LinearGradientBrush>
+        </Border.Stroke>
+        <Grid>
+            <Grid ColumnDefinitions="Auto, Auto, *, Auto, Auto, Auto, Auto"
+                  Padding="10,0" ColumnSpacing="8">
+
+                <!-- Кнопка Домой -->
+                <Button Grid.Column="0"
+                        Text="⌂" Style="{StaticResource ToolbarButton}"
+                        ToolTipProperties.Text="На главную"
+                        FontSize="14"
+                        TextColor="#00F5FF"
+                        Command="{Binding GoBackCommand}"/>
+
+                <BoxView Grid.Column="1" WidthRequest="1" Color="#1D153A" Margin="4,8"/>
+
+                <!-- Автосохранение -->
+                <HorizontalStackLayout Grid.Column="2" Spacing="8"
+                                       VerticalOptions="Center" Margin="6,0">
+                    <CheckBox IsChecked="{Binding IsAutoSaveEnabled}"
+                              WidthRequest="16" HeightRequest="16" Color="#00F5FF"/>
+                    <Label Text="Автосохранение" FontSize="11"
+                           TextColor="#ECE9FC" VerticalOptions="Center" Opacity="0.8"/>
+                </HorizontalStackLayout>
+
+                <!-- Терминал выбор -->
+                <HorizontalStackLayout Grid.Column="3" Spacing="6"
+                                       VerticalOptions="Center" Margin="4,0">
+                    <Label Text="Терминал:" FontSize="11"
+                           TextColor="#9E96C4" VerticalOptions="Center"/>
+                    <Picker ItemsSource="{Binding TerminalProfiles}"
+                            SelectedItem="{Binding SelectedTerminalProfile}"
+                            WidthRequest="100" FontSize="11"
+                            TextColor="#00F5FF"
+                            BackgroundColor="#110C24"/>
+                </HorizontalStackLayout>
+
+                <!-- Сборка выбор -->
+                <HorizontalStackLayout Grid.Column="4" Spacing="8"
+                                       VerticalOptions="Center" Margin="4,0">
+                    <Label Text="Профиль:" FontSize="11"
+                           TextColor="#9E96C4" VerticalOptions="Center"/>
+                    <Picker ItemsSource="{Binding BuildProfiles}"
+                            SelectedItem="{Binding SelectedBuildProfile}"
+                            WidthRequest="120" FontSize="11"
+                            TextColor="#FF2A85"
+                            BackgroundColor="#110C24"/>
+                    <Picker ItemsSource="{Binding BuildTargets}"
+                            SelectedItem="{Binding SelectedBuildTarget}"
+                            WidthRequest="120" FontSize="11"
+                            TextColor="#ECE9FC"
+                            BackgroundColor="#110C24"/>
+                </HorizontalStackLayout>
+
+                <!-- Кнопки управления с анимацией -->
+                <Button Grid.Column="5"
+                        Text="🛠 Сборка" Style="{StaticResource ToolbarButton}"
+                        ToolTipProperties.Text="Собрать проект"
+                        FontSize="12"
+                        TextColor="#FFD700"
+                        Command="{Binding BuildCommand}"
+                        x:Name="BtnBuild"/>
+                
+                <Button Grid.Column="6"
+                        Text="▶ Запустить" Style="{StaticResource AccentButton}"
+                        ToolTipProperties.Text="Быстрый старт"
+                        HeightRequest="26" 
+                        FontSize="11"
+                        Padding="12,0"
+                        Command="{Binding RunCommand}"
+                        x:Name="BtnRun"/>
+            </Grid>
+        </Grid>
+    </Border>
+
+</ContentView>
+
+
+======================================================================
+FILE: Views\ToolbarView.xaml.cs
+======================================================================
+
+namespace CIDE.Views;
+
+public partial class ToolbarView : ContentView
+{
+    public ToolbarView() => InitializeComponent();
+}
+
+
+======================================================================
 FILE: App.xaml
 ======================================================================
 
@@ -1683,7 +2273,6 @@ internal sealed partial class App : Application
                     titleBar.BackgroundColor = darkColor;
                     titleBar.ForegroundColor = activeTextColor;
                     titleBar.ButtonBackgroundColor = darkColor;
-                    titleBar.ButtonForegroundColor = activeTextColor;
                     titleBar.ButtonHoverBackgroundColor = hoverColor;
                     titleBar.ButtonHoverForegroundColor = activeTextColor;
                     titleBar.ButtonPressedBackgroundColor = pressColor;
@@ -1710,21 +2299,38 @@ FILE: AppShell.xaml
        xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
        xmlns:pages="clr-namespace:CIDE.Pages"
        x:Class="CIDE.AppShell"
-       FlyoutBackgroundColor="#252526"
        x:ClassModifier="internal"
-       FlyoutBehavior="Flyout">
+       FlyoutBackgroundColor="#0D0B18"
+       FlyoutBehavior="Flyout"
+       Shell.NavBarIsVisible="False">
 
-    <!-- Стартовый экран -->
-    <FlyoutItem Title="⌂  Стартовое окно">
-        <ShellContent Route="WelcomePage" ContentTemplate="{DataTemplate pages:WelcomePage}" />
+    <Shell.Resources>
+        <Style TargetType="FlyoutItem">
+            <Setter Property="Shell.ItemTemplate">
+                <DataTemplate>
+                    <Grid HeightRequest="44" Padding="16,0">
+                        <Label Text="{Binding Title}"
+                               FontSize="13"
+                               TextColor="#7A7290"
+                               VerticalOptions="Center"/>
+                    </Grid>
+                </DataTemplate>
+            </Setter>
+        </Style>
+    </Shell.Resources>
+
+    <FlyoutItem Title="⌂  Стартовый экран">
+        <ShellContent Route="WelcomePage"
+                      ContentTemplate="{DataTemplate pages:WelcomePage}"/>
     </FlyoutItem>
 
-    <!-- Сама IDE (скрыта из бокового меню, мы переходим туда программно с передачей пути) -->
-    <ShellContent Route="MainPage" ContentTemplate="{DataTemplate pages:MainPage}" FlyoutItemIsVisible="False" />
+    <ShellContent Route="MainPage"
+                  ContentTemplate="{DataTemplate pages:MainPage}"
+                  FlyoutItemIsVisible="False"/>
 
-    <!-- Настройки -->
-    <FlyoutItem Title="⚙  Настройки среды">
-        <ShellContent Route="SettingsPage" ContentTemplate="{DataTemplate pages:SettingsPage}" />
+    <FlyoutItem Title="⚙  Настройки">
+        <ShellContent Route="SettingsPage"
+                      ContentTemplate="{DataTemplate pages:SettingsPage}"/>
     </FlyoutItem>
 
 </Shell>
@@ -1740,7 +2346,6 @@ internal sealed partial class AppShell : Shell
     public AppShell()
     {
         InitializeComponent();
-        Routing.RegisterRoute("MainPage", typeof(MainPage));
     }
 }
 
@@ -1765,8 +2370,7 @@ FILE: CIDE.csproj
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
-    <!-- Оптимизация XAML -->
-    <MauiXamlInflator>SourceGen</MauiXamlInflator>
+    <!-- Оптимизация XAML отключена (вызывает MAUIG1001) -->
 
     <ApplicationTitle>CIDE</ApplicationTitle>
     <ApplicationId>com.core.cide</ApplicationId>
@@ -1791,11 +2395,6 @@ FILE: CIDE.csproj
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Пустые папки для сохранения структуры -->
-    <Folder Include="Resources\Images\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Maui" Version="14.1.1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.60" />
@@ -1806,9 +2405,20 @@ FILE: CIDE.csproj
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="CIDE.Tests\**" />
-    <None Include="CIDE.Tests\**" />
+    <MauiXaml Update="Views\EditorView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </MauiXaml>
+    <MauiXaml Update="Views\SidebarView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </MauiXaml>
+    <MauiXaml Update="Views\TerminalView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </MauiXaml>
+    <MauiXaml Update="Views\ToolbarView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </MauiXaml>
   </ItemGroup>
+
 </Project>
 
 ======================================================================
@@ -1841,7 +2451,6 @@ using System.Runtime.Versioning;
 using CIDE.PageModels;
 using CIDE.Pages;
 using CommunityToolkit.Maui;
-using Windows.UI.ApplicationSettings;
 using Microsoft.Extensions.Logging;
 namespace CIDE;
 [SupportedOSPlatform("windows10.0.22000.0")]
@@ -1859,6 +2468,9 @@ internal static class MauiProgram
                 _ = fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             });
         _ = builder.Services.AddMauiBlazorWebView();
+#if DEBUG
+        builder.Services.AddBlazorWebViewDeveloperTools();
+#endif
         _ = builder.Services.AddTransient<WelcomePage>();
         _ = builder.Services.AddTransient<WelcomePageModel>();
         _ = builder.Services.AddTransient<SettingsPage>();

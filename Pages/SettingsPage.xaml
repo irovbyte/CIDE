@@ -1,11 +1,141 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="CIDE.Pages.SettingsPage"
-             x:ClassModifier="internal"
-             Title="Настройки">
-    <VerticalStackLayout Spacing="20" Padding="40">
-        <Label Text="⚙ Настройки CIDE" FontSize="32" FontAttributes="Bold"/>
-        <Label Text="Здесь будет менеджер SSH подключений, настройки WSL и управление плагинами." TextColor="Gray" />
-    </VerticalStackLayout>
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="CIDE.Pages.SettingsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:ClassModifier="internal"
+    BackgroundColor="#0A0910"
+    Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="56, *">
+
+        <Border
+            Grid.Row="0"
+            BackgroundColor="#0D0B18"
+            StrokeThickness="0">
+            <Grid>
+                <HorizontalStackLayout
+                    Padding="24,0"
+                    Spacing="10"
+                    VerticalOptions="Center">
+                    <Label
+                        FontSize="18"
+                        Text="⚙"
+                        TextColor="#6C63FF"
+                        VerticalOptions="Center" />
+                    <Label
+                        FontAttributes="Bold"
+                        FontSize="16"
+                        Text="Настройки"
+                        TextColor="#C4BAFF"
+                        VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <BoxView
+                    HeightRequest="1"
+                    VerticalOptions="End"
+                    Color="#1E1A2E" />
+            </Grid>
+        </Border>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="32,28" Spacing="24">
+
+                <VerticalStackLayout Spacing="12">
+                    <Label
+                        CharacterSpacing="2"
+                        FontAttributes="Bold"
+                        FontSize="9"
+                        Text="SSH ПРОФИЛИ"
+                        TextColor="#2A2440" />
+
+                    <Border
+                        Padding="20,16"
+                        BackgroundColor="#0F0D1C"
+                        StrokeShape="RoundRectangle 8"
+                        StrokeThickness="1">
+                        <Border.Stroke>
+                            <SolidColorBrush Color="#1E1A2E" />
+                        </Border.Stroke>
+                        <VerticalStackLayout Spacing="8">
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="13"
+                                Text="SSH подключение к Linux серверу"
+                                TextColor="#C4BAFF" />
+                            <Label
+                                FontSize="12"
+                                Text="Здесь будет менеджер SSH профилей, настройки ключей и управление удалёнными рабочими папками."
+                                TextColor="#3D3660" />
+                            <Label
+                                Margin="0,4,0,0"
+                                FontSize="11"
+                                Text="В разработке…"
+                                TextColor="#6C63FF" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="12">
+                    <Label
+                        CharacterSpacing="2"
+                        FontAttributes="Bold"
+                        FontSize="9"
+                        Text="КОМПИЛЯТОР"
+                        TextColor="#2A2440" />
+
+                    <Border
+                        Padding="20,16"
+                        BackgroundColor="#0F0D1C"
+                        StrokeShape="RoundRectangle 8"
+                        StrokeThickness="1">
+                        <Border.Stroke>
+                            <SolidColorBrush Color="#1E1A2E" />
+                        </Border.Stroke>
+                        <VerticalStackLayout Spacing="8">
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="13"
+                                Text="Тулчейн MinGW / MSVC"
+                                TextColor="#C4BAFF" />
+                            <Label
+                                FontSize="12"
+                                Text="Настройка путей к компиляторам C/C++/C# и параметров сборки."
+                                TextColor="#3D3660" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Spacing="12">
+                    <Label
+                        CharacterSpacing="2"
+                        FontAttributes="Bold"
+                        FontSize="9"
+                        Text="РЕДАКТОР"
+                        TextColor="#2A2440" />
+
+                    <Border
+                        Padding="20,16"
+                        BackgroundColor="#0F0D1C"
+                        StrokeShape="RoundRectangle 8"
+                        StrokeThickness="1">
+                        <Border.Stroke>
+                            <SolidColorBrush Color="#1E1A2E" />
+                        </Border.Stroke>
+                        <VerticalStackLayout Spacing="8">
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="13"
+                                Text="Monaco Editor"
+                                TextColor="#C4BAFF" />
+                            <Label
+                                FontSize="12"
+                                Text="Размер шрифта, тема, отступы и другие настройки редактора."
+                                TextColor="#3D3660" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
 </ContentPage>

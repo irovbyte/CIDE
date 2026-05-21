@@ -1,153 +1,117 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:pm="clr-namespace:CIDE.PageModels"
-             xmlns:m="clr-namespace:CIDE.Models"
-             xmlns:helpers="clr-namespace:CIDE.Helpers"
-             x:Class="CIDE.Pages.MainPage"
-             Shell.NavBarIsVisible="False"
-             x:ClassModifier="internal"
-             BackgroundColor="#1E1E1E">
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="CIDE.Pages.MainPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:helpers="clr-namespace:CIDE.Helpers"
+    xmlns:views="clr-namespace:CIDE.Views"
+    x:ClassModifier="internal"
+    BackgroundColor="#06040A"
+    Shell.NavBarIsVisible="False">
 
     <ContentPage.Resources>
-        <helpers:DepthToMarginConverter x:Key="DepthConverter"/>
+        <helpers:DepthToMarginConverter x:Key="DepthConverter" />
     </ContentPage.Resources>
 
-    <!-- IDE Workspace -->
-    <Grid RowDefinitions="40, *, 24">
+    <Grid RowDefinitions="50, *, 24">
 
-        <!-- Toolbar -->
-        <Border Grid.Row="0" BackgroundColor="#252526" StrokeThickness="0" Padding="15,5">
-            <Grid ColumnDefinitions="Auto, Auto, *, Auto, Auto, Auto, Auto" ColumnSpacing="15">
+        <views:ToolbarView x:Name="ToolbarPanel" Grid.Row="0" />
 
-                <Button Grid.Column="0" Text="⌂ В меню" Command="{Binding GoBackCommand}" BackgroundColor="Transparent" TextColor="#CCC" Padding="5"/>
+        <Grid
+            Grid.Row="1"
+            Margin="8,8,8,4"
+            ColumnDefinitions="250, 1, *">
 
-                <HorizontalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center" Margin="10,0,0,0">
-                    <CheckBox IsChecked="{Binding IsAutoSaveEnabled}" Color="#4EC9B0" WidthRequest="20" HeightRequest="20"/>
-                    <Label Text="Автосохранение" TextColor="#999" FontSize="12" VerticalOptions="Center"/>
-                </HorizontalStackLayout>
+            <views:SidebarView x:Name="SidebarPanel" Grid.Column="0" />
 
-                <HorizontalStackLayout Grid.Column="3" Spacing="10" VerticalOptions="Center">
-                    <Label Text="Терминал:" TextColor="#888" FontSize="11" VerticalOptions="Center"/>
-                    <Picker ItemsSource="{Binding TerminalProfiles}" SelectedItem="{Binding SelectedTerminalProfile}" 
-                            TextColor="#CCC" BackgroundColor="#1E1E1E" WidthRequest="110" FontSize="12"/>
-                </HorizontalStackLayout>
+            <BoxView Grid.Column="1" Color="Transparent" />
 
-                <HorizontalStackLayout Grid.Column="4" Spacing="10" VerticalOptions="Center">
-                    <Label Text="Сборка:" TextColor="#888" FontSize="11" VerticalOptions="Center"/>
-                    <Picker ItemsSource="{Binding BuildProfiles}" SelectedItem="{Binding SelectedBuildProfile}" 
-                            TextColor="#CCC" BackgroundColor="#1E1E1E" WidthRequest="130" FontSize="12"/>
-                    <Picker ItemsSource="{Binding BuildTargets}" SelectedItem="{Binding SelectedBuildTarget}" 
-                            TextColor="#CCC" BackgroundColor="#1E1E1E" WidthRequest="130" FontSize="12"/>
-                </HorizontalStackLayout>
+            <Grid
+                x:Name="EditorPanel"
+                Grid.Column="2"
+                Margin="6,0,0,0"
+                RowDefinitions="*, Auto">
 
-                <Button Grid.Column="5" Text="🛠 Сборка" Command="{Binding BuildCommand}" 
-                        BackgroundColor="#333" TextColor="#CCC" CornerRadius="4" Padding="15,0" FontSize="12"/>
-                <Button Grid.Column="6" Text="▶ Запуск" Command="{Binding RunCommand}" 
-                        BackgroundColor="#007ACC" TextColor="White" CornerRadius="4" Padding="15,0" FontAttributes="Bold" FontSize="12"/>
+                <views:EditorView x:Name="EditorViewControl" Grid.Row="0" />
+
+                <views:TerminalView
+                    x:Name="OutputPanel"
+                    Grid.Row="1"
+                    Margin="0,8,0,0" />
+            </Grid>
+        </Grid>
+
+        <Border
+            Grid.Row="2"
+            BackgroundColor="#0A0714"
+            StrokeThickness="0">
+            <Grid>
+                <BoxView
+                    HeightRequest="1"
+                    VerticalOptions="Start"
+                    Color="#1D153A" />
+                <Grid
+                    Padding="14,0"
+                    ColumnDefinitions="Auto, Auto, *, Auto, Auto, Auto"
+                    ColumnSpacing="16">
+
+                    <Border
+                        Grid.Column="0"
+                        Margin="0,2"
+                        Padding="8,1"
+                        BackgroundColor="#7C3AED"
+                        StrokeThickness="0"
+                        VerticalOptions="Center">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="4" />
+                        </Border.StrokeShape>
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="9,5"
+                            Text="{Binding SelectedBuildProfile}"
+                            TextColor="White"
+                            VerticalOptions="Center" />
+                    </Border>
+
+                    <Label
+                        Grid.Column="1"
+                        FontSize="10"
+                        Opacity="0.7"
+                        Text="{Binding StatusText}"
+                        TextColor="#ECE9FC"
+                        VerticalOptions="Center" />
+
+                    <HorizontalStackLayout
+                        Grid.Column="3"
+                        Spacing="6"
+                        VerticalOptions="Center">
+                        <Ellipse
+                            x:Name="SshDot"
+                            Fill="#4F477A"
+                            HeightRequest="6"
+                            WidthRequest="6" />
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="9,5"
+                            Text="SSH STATUS"
+                            TextColor="#9E96C4" />
+                    </HorizontalStackLayout>
+
+                    <Label
+                        Grid.Column="4"
+                        FontSize="10"
+                        Text="LF · UTF-8"
+                        TextColor="#4F477A"
+                        VerticalOptions="Center" />
+                    <Label
+                        Grid.Column="5"
+                        FontSize="10"
+                        Text="CIDE v1.0"
+                        TextColor="#4F477A"
+                        VerticalOptions="Center" />
+                </Grid>
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1" ColumnDefinitions="260, 2, *">
-            <!-- Обозреватель -->
-            <Border Grid.Column="0" BackgroundColor="#252526" Stroke="#333" StrokeThickness="1">
-                <Grid RowDefinitions="35, *">
-                    <Label Grid.Row="0" Text="{Binding ExplorerTitle}" TextColor="Gray" FontSize="11" Margin="15,10,0,0" FontAttributes="Bold"/>
-
-                    <CollectionView Grid.Row="1" 
-                        VerticalOptions="Fill"
-                        VerticalScrollBarVisibility="Always" 
-                        ItemsSource="{Binding FlatTree}" 
-                        SelectionMode="Single" 
-                        SelectionChanged="OnTreeSelectionChangedAsync">
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate x:DataType="m:FileNode">
-                                <Grid ColumnDefinitions="20, 24, *" Margin="{Binding TreeMargin}" Padding="0,5">
-                                    <Label Grid.Column="0" Text="{Binding Glyph}" FontFamily="Segoe MDL2 Assets" TextColor="{Binding GlyphColor}" FontSize="10" VerticalOptions="Center" HorizontalOptions="Center"/>
-                                    <Label Grid.Column="1" Text="{Binding IconText}" FontFamily="Segoe MDL2 Assets" TextColor="{Binding IconColor}" FontSize="12" VerticalOptions="Center" HorizontalOptions="Center"/>
-                                    <Label Grid.Column="2" Text="{Binding Name}" TextColor="#CCC" FontSize="13" VerticalOptions="Center" LineBreakMode="TailTruncation"/>
-                                </Grid>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </Grid>
-            </Border>
-
-            <BoxView Grid.Column="1" Color="#333"/>
-
-            <!-- Область редактора и вывода -->
-            <Grid Grid.Column="2" RowDefinitions="35, 24, *, Auto">
-
-                <!-- Панель вкладок -->
-                <Border Grid.Row="0" BackgroundColor="#2D2D2D" Stroke="#333" StrokeThickness="1">
-                    <ScrollView Orientation="Horizontal">
-                        <HorizontalStackLayout BindableLayout.ItemsSource="{Binding Tabs}">
-                            <BindableLayout.ItemTemplate>
-                                <DataTemplate x:DataType="m:EditorTab">
-                                    <Border BackgroundColor="{Binding BackgroundBrush}" Stroke="#333" StrokeThickness="1" Padding="15,0,5,0">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding BindingContext.ActivateTabCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" CommandParameter="{Binding}"/>
-                                        </Border.GestureRecognizers>
-                                        <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
-                                            <Label Text="{Binding DisplayName}" TextColor="#CCC" VerticalOptions="Center"/>
-                                            <Button Text="✕" WidthRequest="30" HeightRequest="30" Padding="0" BackgroundColor="Transparent" TextColor="#CCC"
-                                                    Command="{Binding BindingContext.CloseTabCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" CommandParameter="{Binding}"/>
-                                        </HorizontalStackLayout>
-                                    </Border>
-                                </DataTemplate>
-                            </BindableLayout.ItemTemplate>
-                        </HorizontalStackLayout>
-                    </ScrollView>
-                </Border>
-
-                <!-- Хлебные крошки -->
-                <Border Grid.Row="1" BackgroundColor="#1E1E1E" StrokeThickness="1" Stroke="#2D2D2D" Padding="15,4">
-                    <Label Text="{Binding Breadcrumbs}" TextColor="Gray" FontSize="11" VerticalOptions="Center"/>
-                </Border>
-
-                <!-- Заглушка (когда нет открытых файлов) -->
-                <VerticalStackLayout Grid.Row="2" VerticalOptions="Center" HorizontalOptions="Center" Spacing="15">
-                    <VerticalStackLayout.Triggers>
-                        <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding IsEditorVisible}" Value="True">
-                            <Setter Property="IsVisible" Value="False" />
-                        </DataTrigger>
-                    </VerticalStackLayout.Triggers>
-
-                    <Label Text="CIDE" FontSize="80" TextColor="#252526" FontAttributes="Bold" HorizontalOptions="Center"/>
-                    <Label Text="Выберите файл в обозревателе для редактирования" TextColor="#333333" FontSize="14" HorizontalOptions="Center"/>
-                </VerticalStackLayout>
-
-                <!-- Движок Monaco (WebView) -->
-                <WebView Grid.Row="2" 
-                         x:Name="MonacoView"
-                         IsVisible="{Binding IsEditorVisible}"
-                         Margin="0"/>
-
-                <!-- Панель вывода (Скрываемая) -->
-                <Grid Grid.Row="3" RowDefinitions="30, *" BackgroundColor="#1E1E1E" IsVisible="{Binding IsOutputVisible}" HeightRequest="200">
-                    <Border Grid.Row="0" BackgroundColor="#2D2D2D" Stroke="#333" StrokeThickness="1">
-                        <HorizontalStackLayout Spacing="15" Padding="15,0">
-                            <Label Text="ВЫВОД" TextColor="#CCC" VerticalOptions="Center" FontAttributes="Bold" FontSize="11"/>
-                            <Label Text="ТЕРМИНАЛ" TextColor="Gray" VerticalOptions="Center" FontSize="11"/>
-                            <Label Text="ПРОБЛЕМЫ" TextColor="Gray" VerticalOptions="Center" FontSize="11"/>
-                            <Button Text="✕" Command="{Binding ToggleOutputCommand}" TextColor="Gray" BackgroundColor="Transparent" Padding="5,0" Margin="20,0,0,0"/>
-                        </HorizontalStackLayout>
-                    </Border>
-                    <ScrollView Grid.Row="1" Padding="10">
-                        <Label x:Name="OutputLabel" TextColor="#D4D4D4" FontFamily="Consolas" FontSize="12"/>
-                    </ScrollView>
-                </Grid>
-            </Grid>
-        </Grid>
-
-        <!-- StatusBar -->
-        <Grid Grid.Row="2" BackgroundColor="#007ACC" ColumnDefinitions="*, Auto, Auto" Padding="15,0">
-            <Label Grid.Column="0" Text="{Binding StatusText}" TextColor="White" FontSize="11" VerticalOptions="Center"/>
-            <HorizontalStackLayout Grid.Column="1" Spacing="15" Margin="0,0,20,0" VerticalOptions="Center">
-                <Label Text="LF" TextColor="White" FontSize="11"/>
-                <Label Text="UTF-8" TextColor="White" FontSize="11"/>
-            </HorizontalStackLayout>
-            <Label Grid.Column="2" Text="{Binding SelectedBuildProfile}" TextColor="White" FontSize="11" VerticalOptions="Center" FontAttributes="Bold"/>
-        </Grid>
     </Grid>
 </ContentPage>

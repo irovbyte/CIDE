@@ -46,7 +46,7 @@ public static class CompileService
             onOutput($"$ {makePath}\n");
             _ = await ExecuteProcessAsync(makePath, "", workspacePath, onOutput);
         }
-        else if (profile == "Проект C# (.slnx/.csproj)")
+        else if (profile == "Проект C#")
         {
             onOutput("$ dotnet run\n");
             _ = await ExecuteProcessAsync("dotnet", "run", workspacePath, onOutput);

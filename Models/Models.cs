@@ -15,7 +15,7 @@ public partial class FileNode : ObservableObject
     public partial bool IsExpanded { get; set; }
     public bool IsPopulated { get; set; }
     public int Depth { get; set; }
-    public Thickness TreeMargin => new Thickness(Depth * 15, 0, 0, 0);
+    public Thickness TreeMargin => new(Depth * 15, 0, 0, 0);
     public string Glyph => Kind switch
     {
         FileNodeKind.Solution => "\uE810",
@@ -73,6 +73,7 @@ public partial class EditorTab : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(BackgroundBrush))]
     public partial bool IsActive { get; set; }
+    public FileDisplayMode DisplayMode { get; init; } = FileDisplayMode.Text;
     public string FileName => Path.GetFileName(FilePath);
     public string DisplayName => IsModified ? $"● {FileName}" : FileName;
     public string BackgroundBrush => IsActive ? "#1E1E1E" : "Transparent";

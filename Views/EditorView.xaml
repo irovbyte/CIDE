@@ -1,0 +1,128 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="CIDE.Views.EditorView"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <Grid RowDefinitions="36, 24, *">
+        <Border
+            Grid.Row="0"
+            BackgroundColor="#0A0714"
+            StrokeThickness="1">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="8" />
+            </Border.StrokeShape>
+            <Border.Stroke>
+                <SolidColorBrush Color="#1D153A" />
+            </Border.Stroke>
+            <Grid>
+                <HorizontalStackLayout
+                    Padding="14,0"
+                    Spacing="8"
+                    VerticalOptions="Center">
+                    <Ellipse
+                        Fill="#00F5FF"
+                        HeightRequest="6"
+                        VerticalOptions="Center"
+                        WidthRequest="6" />
+                    <Label
+                        FontFamily="OpenSansSemibold"
+                        FontSize="12"
+                        Text="Редактор CIDE"
+                        TextColor="#ECE9FC"
+                        VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <BoxView
+                    HeightRequest="1"
+                    VerticalOptions="End"
+                    Color="#1D153A" />
+            </Grid>
+        </Border>
+
+        <Border
+            Grid.Row="1"
+            Padding="14,0"
+            BackgroundColor="#0C081A"
+            StrokeThickness="1">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="0" />
+            </Border.StrokeShape>
+            <Border.Stroke>
+                <SolidColorBrush Color="#1D153A" />
+            </Border.Stroke>
+            <Grid>
+                <Label
+                    FontFamily="Consolas"
+                    FontSize="10"
+                    Opacity="0.6"
+                    Text="{Binding Breadcrumbs}"
+                    TextColor="#ECE9FC"
+                    VerticalOptions="Center" />
+                <BoxView
+                    HeightRequest="1"
+                    VerticalOptions="End"
+                    Color="#1D153A" />
+            </Grid>
+        </Border>
+
+        <Border
+            Grid.Row="2"
+            BackgroundColor="#06040A"
+            StrokeThickness="1">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="8" />
+            </Border.StrokeShape>
+            <Border.Stroke>
+                <SolidColorBrush Color="#1D153A" />
+            </Border.Stroke>
+            <Grid>
+                <VerticalStackLayout
+                    HorizontalOptions="Center"
+                    Spacing="14"
+                    VerticalOptions="Center">
+                    <VerticalStackLayout.Triggers>
+                        <DataTrigger
+                            Binding="{Binding IsEditorVisible}"
+                            TargetType="VerticalStackLayout"
+                            Value="True">
+                            <Setter Property="IsVisible" Value="False" />
+                        </DataTrigger>
+                    </VerticalStackLayout.Triggers>
+
+                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="3">
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="78"
+                            Text="C"
+                            TextColor="#1F1538" />
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="78"
+                            Text="I"
+                            TextColor="#130D26" />
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="78"
+                            Text="D"
+                            TextColor="#1F1538" />
+                        <Label
+                            FontAttributes="Bold"
+                            FontSize="78"
+                            Text="E"
+                            TextColor="#130D26" />
+                    </HorizontalStackLayout>
+                    <Label
+                        CharacterSpacing="2"
+                        FontAttributes="Bold"
+                        FontSize="11"
+                        HorizontalOptions="Center"
+                        Text="ВЫБЕРИТЕ ФАЙЛ ДЛЯ РЕДАКТИРОВАНИЯ"
+                        TextColor="#4F477A" />
+                </VerticalStackLayout>
+
+                <Grid x:Name="EditorHost" IsVisible="{Binding IsEditorVisible}" />
+            </Grid>
+        </Border>
+    </Grid>
+
+</ContentView>
