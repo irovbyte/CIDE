@@ -19,17 +19,17 @@
 Откройте **PowerShell** и вставьте эту строку:
 
 ```powershell
-New-Item -ItemType Directory -Force -Path C:\cide; Invoke-WebRequest -Uri "https://github.com/irovbyte/CIDE/releases/latest/download/CIDE.exe" -OutFile C:\cide\CIDE.exe; $p = [Environment]::GetEnvironmentVariable("PATH","User"); if($p -notlike "*C:\cide*"){ [Environment]::SetEnvironmentVariable("PATH", "$p;C:\cide", "User") }
+New-Item -ItemType Directory -Force -Path C:\cide; Invoke-WebRequest -Uri "https://github.com/irovbyte/CIDE/releases/latest/download/CIDE.exe" -OutFile C:\cide\CIDE.exe; $p = [Environment]::GetEnvironmentVariable("PATH","User"); if($p -notlike "*C:\cide*"){ [Environment]::SetEnvironmentVariable("PATH", "$p;C:\cide", "User") }; Start-Process -FilePath "C:\cide\CIDE.exe"
 ```
 
-После выполнения скрипта вы сможете просто написать команду `cide .` в любой папке, чтобы открыть IDE прямо в этой директории! *(Примечание: может потребоваться перезапуск терминала для применения изменений `PATH`).*
+После выполнения скрипта приложение **запустится автоматически**, а также вы сможете писать команду `cide .` в любой папке, чтобы открыть IDE прямо в этой директории! *(Примечание: может потребоваться перезапуск терминала для применения изменений `PATH`).*
 
 ### 🐧 Для Linux (Bash)
 
 Откройте терминал и выполните:
 
 ```bash
-sudo mkdir -p /opt/cide && sudo wget -O /opt/cide/CIDE "https://github.com/irovbyte/CIDE/releases/latest/download/CIDE" && sudo chmod +x /opt/cide/CIDE && sudo ln -sf /opt/cide/CIDE /usr/local/bin/cide
+sudo mkdir -p /opt/cide && sudo wget -O /opt/cide/CIDE "https://github.com/irovbyte/CIDE/releases/latest/download/CIDE" && sudo chmod +x /opt/cide/CIDE && sudo ln -sf /opt/cide/CIDE /usr/local/bin/cide && cide
 ```
 
 Теперь `cide` доступен глобально из любого места!

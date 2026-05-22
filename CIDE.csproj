@@ -12,6 +12,7 @@
     <ApplicationTitle>CIDE</ApplicationTitle>
     <ApplicationId>com.core.cide</ApplicationId>
 
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
