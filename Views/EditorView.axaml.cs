@@ -18,12 +18,17 @@ public partial class EditorView : UserControl
     private TextMate.Installation? _minimapTextMateInstallation;
 
     private bool _isMinimapDragging;
-    private Avalonia.Point _minimapDragStartPoint;
+    private Point _minimapDragStartPoint;
     private double _minimapDragStartOffset;
+
+    private Avalonia.Threading.DispatcherTimer? _autoSaveTimer;
 
     public EditorView()
     {
         InitializeComponent();
+
+        _autoSaveTimer = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _autoSaveTimer.Tick += AutoSaveTimer_Tick;
         SetupSyntaxHighlighting();
         CodeEditor.AddHandler(PointerWheelChangedEvent, CodeEditorPointerWheelChanged, Avalonia.Interactivity.RoutingStrategies.Bubble);
         MinimapEditor.Document = CodeEditor.Document;
@@ -156,6 +161,23 @@ public partial class EditorView : UserControl
         {
             vm.ActiveTab.Content = CodeEditor.Text;
             vm.ActiveTab.IsModified = true;
+
+            if (SettingsService.Instance.AutoSave)
+            {
+                _autoSaveTimer?.Stop();
+                _autoSaveTimer?.Start();
+            }
+        }
+    }
+
+    private async void AutoSaveTimer_Tick(object? sender, EventArgs e)
+    {
+        _autoSaveTimer?.Stop();
+        if (DataContext is MainPageModel vm && vm.ActiveTab != null && vm.ActiveTab.IsModified)
+        {
+            await WorkspaceService.SaveFileAsync(vm.ActiveTab.FilePath, vm.ActiveTab.Content);
+            vm.ActiveTab.IsModified = false;
+            vm.StatusText = "✅ Автосохранено";
         }
     }
 
@@ -165,12 +187,7 @@ public partial class EditorView : UserControl
         {
             _isMinimapDragging = true;
             _minimapDragStartPoint = e.GetPosition(MinimapEditor);
-            
-            var mainSv = CodeEditor.FindDescendantOfType<ScrollViewer>();
-            if (mainSv != null)
-            {
-                _minimapDragStartOffset = mainSv.Offset.Y;
-            }
+            _minimapDragStartOffset = CodeEditor.TextArea.TextView.ScrollOffset.Y;
             e.Handled = true;
         }
     }
@@ -182,19 +199,18 @@ public partial class EditorView : UserControl
             var point = e.GetPosition(MinimapEditor);
             var delta = point.Y - _minimapDragStartPoint.Y;
 
-            var mainSv = CodeEditor.FindDescendantOfType<ScrollViewer>();
             var miniSv = MinimapEditor.FindDescendantOfType<ScrollViewer>();
+            var mainSv = CodeEditor.FindDescendantOfType<ScrollViewer>();
 
-            if (mainSv != null && miniSv != null)
+            if (miniSv != null && mainSv != null)
             {
-                double scale = mainSv.Extent.Height / miniSv.Extent.Height;
-                if (double.IsNaN(scale) || double.IsInfinity(scale)) scale = 1;
-                
-                double newOffset = _minimapDragStartOffset + delta * scale;
-                // Clamp the offset to avoid scrolling out of bounds
-                newOffset = Math.Max(0, Math.Min(newOffset, mainSv.Extent.Height - mainSv.Viewport.Height));
-                
-                mainSv.Offset = new Avalonia.Vector(mainSv.Offset.X, newOffset);
+                var totalMainHeight = CodeEditor.TextArea.TextView.DocumentHeight;
+                var miniHeight = miniSv.Extent.Height;
+                var scale = (miniHeight > 0) ? (totalMainHeight / miniHeight) : 1;
+                var newOffset = _minimapDragStartOffset + (delta * scale);
+                var maxScroll = Math.Max(0, mainSv.Extent.Height - mainSv.Viewport.Height);
+                newOffset = Math.Max(0, Math.Min(newOffset, maxScroll));
+                mainSv.Offset = new Vector(CodeEditor.TextArea.TextView.ScrollOffset.X, newOffset);
             }
             e.Handled = true;
         }

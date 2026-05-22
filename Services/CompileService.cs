@@ -9,11 +9,9 @@ public static class CompileService
     {
         onOutput($"[{DateTime.Now:HH:mm:ss}] Запуск профиля: {profile}\n");
 
-        if (profile == "Один файл (C/C++)")
+        if (profile == "C" || profile == "C++" || profile == "Один файл (C/C++)")
         {
-            if (string.IsNullOrEmpty(activeFilePath)
-                || (!activeFilePath.EndsWith(".c", StringComparison.OrdinalIgnoreCase)
-                    && !activeFilePath.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase)))
+            if (string.IsNullOrEmpty(activeFilePath) || (!activeFilePath.EndsWith(".c", StringComparison.OrdinalIgnoreCase) && !activeFilePath.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase)))
             {
                 onOutput("Ошибка: Выберите файл .c или .cpp для компиляции.\n");
                 return;
@@ -29,7 +27,6 @@ public static class CompileService
             }
 
             var outputExe = Path.Combine(Path.GetDirectoryName(activeFilePath) ?? workspacePath, Path.GetFileNameWithoutExtension(activeFilePath) + ".exe");
-
             var args = $"-Wall -g \"{activeFilePath}\" -o \"{outputExe}\"";
             onOutput($"$ {compilerPath} {args}\n");
 
@@ -40,7 +37,7 @@ public static class CompileService
                 _ = await ExecuteProcessAsync(outputExe, "", Path.GetDirectoryName(activeFilePath) ?? workspacePath, onOutput);
             }
         }
-        else if (profile == "Makefile (C/C++)")
+        else if (profile == "Makefile" || profile == "Makefile (C/C++)")
         {
             var makePath = Path.Combine(ToolchainService.MinGWDir, "bin", "mingw32-make.exe");
             onOutput($"$ {makePath}\n");
@@ -51,9 +48,21 @@ public static class CompileService
             onOutput("$ dotnet run\n");
             _ = await ExecuteProcessAsync("dotnet", "run", workspacePath, onOutput);
         }
+        else if (profile == "Python")
+        {
+            onOutput($"$ python \"{activeFilePath}\"\n");
+            _ = await ExecuteProcessAsync("python", $"\"{activeFilePath}\"", Path.GetDirectoryName(activeFilePath) ?? workspacePath, onOutput);
+        }
+        else if (profile == "Bash")
+        {
+            onOutput($"$ bash \"{activeFilePath}\"\n");
+            var shell = OperatingSystem.IsWindows() ? "wsl" : "bash";
+            var arg = OperatingSystem.IsWindows() ? $"bash \"{activeFilePath}\"" : $"\"{activeFilePath}\"";
+            _ = await ExecuteProcessAsync(shell, arg, Path.GetDirectoryName(activeFilePath) ?? workspacePath, onOutput);
+        }
         else
         {
-            onOutput("Профиль не поддерживается.\n");
+            onOutput($"Профиль {profile} не поддерживается.\n");
         }
     }
 

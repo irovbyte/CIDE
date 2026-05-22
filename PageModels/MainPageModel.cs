@@ -79,18 +79,33 @@ public sealed partial class MainPageModel : ObservableObject
 
     private async Task CheckToolchainAsync()
     {
-        await AutoUpdaterService.CheckForUpdatesAsync(msg => Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = msg));
-        await ToolchainService.InstallMinGWAsync(msg => Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = msg));
-        if (CurrentState == AppState.Loading)
+        try
         {
-            if (Program.StartupArgs.Length > 0 && Directory.Exists(Program.StartupArgs[0]))
+            await AutoUpdaterService.CheckForUpdatesAsync(msg => Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = msg));
+            await ToolchainService.InstallMinGWAsync(msg => Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = msg));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Toolchain error: {ex}");
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = "Ошибка загрузки: " + ex.Message);
+            await Task.Delay(2000);
+        }
+        finally
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
-                WorkspacePath = Path.GetFullPath(Program.StartupArgs[0]);
-            }
-            else
-            {
-                CurrentState = AppState.Welcome;
-            }
+                if (CurrentState == AppState.Loading)
+                {
+                    if (Program.StartupArgs != null && Program.StartupArgs.Length > 0 && Directory.Exists(Program.StartupArgs[0]))
+                    {
+                        WorkspacePath = Path.GetFullPath(Program.StartupArgs[0]);
+                    }
+                    else
+                    {
+                        CurrentState = AppState.Welcome;
+                    }
+                }
+            });
         }
     }
 
@@ -523,15 +538,126 @@ public sealed partial class MainPageModel : ObservableObject
         IsOutputVisible = true;
         CompilerOutput = "";
         await SaveActiveFileAsync();
+
+        var targetFile = ActiveTab?.FilePath ?? "";
+        if (!string.IsNullOrEmpty(SelectedBuildTarget) && !string.IsNullOrEmpty(WorkspacePath))
+        {
+            var files = Directory.GetFiles(WorkspacePath, SelectedBuildTarget, SearchOption.AllDirectories);
+            if (files.Length > 0)
+            {
+                targetFile = files[0];
+            }
+        }
+
         await CompileService.RunCompilationAsync(
             SelectedBuildProfile,
-            ActiveTab?.FilePath ?? "",
+            targetFile,
             WorkspacePath ?? "",
             output => Avalonia.Threading.Dispatcher.UIThread.Post(() => CompilerOutput += output));
     }
 
     [RelayCommand]
     internal async Task BuildCommandAsync() => await RunCommandAsync();
+
+    [RelayCommand]
+    private async Task FormatCodeAsync()
+    {
+        if (ActiveTab == null || string.IsNullOrEmpty(ActiveTab.FilePath) || string.IsNullOrEmpty(WorkspacePath))
+        {
+            return;
+        }
+        var ext = Path.GetExtension(ActiveTab.FilePath).ToLowerInvariant();
+        var formatted = false;
+        if (ext == ".cs")
+        {
+            await SaveActiveFileAsync();
+            StatusText = "Форматирование C#...";
+            var proc = new System.Diagnostics.Process
+            {
+                StartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "dotnet",
+                    Arguments = $"format \"{WorkspacePath}\" --include \"{ActiveTab.FilePath}\"",
+                    WorkingDirectory = WorkspacePath,
+                    CreateNoWindow = true
+                }
+            };
+            _ = proc.Start();
+            await proc.WaitForExitAsync();
+            ActiveTab.Content = await File.ReadAllTextAsync(ActiveTab.FilePath);
+            formatted = true;
+        }
+        else if (ext == ".c" || ext == ".cpp" || ext == ".h" || ext == ".hpp")
+        {
+            if (!Settings.UseLocalClangFormat)
+            {
+                StatusText = "Локальный clang-format отключен в настройках";
+                return;
+            }
+
+            await SaveActiveFileAsync();
+            StatusText = "Форматирование C/C++...";
+
+            var clangPath = string.IsNullOrWhiteSpace(Settings.ClangFormatPath) ? "clang-format" : Settings.ClangFormatPath;
+            var proc = new System.Diagnostics.Process
+            {
+                StartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = clangPath,
+                    Arguments = $"-i \"{ActiveTab.FilePath}\"",
+                    WorkingDirectory = WorkspacePath,
+                    CreateNoWindow = true
+                }
+            };
+            try
+            {
+                _ = proc.Start();
+                await proc.WaitForExitAsync();
+                ActiveTab.Content = await File.ReadAllTextAsync(ActiveTab.FilePath);
+                formatted = true;
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Ошибка clang-format: {ex.Message}";
+            }
+        }
+
+        if (formatted)
+        {
+            var temp = ActiveTab;
+            ActiveTab = null;
+            ActiveTab = temp;
+            StatusText = "Готов";
+        }
+    }
+
+    [RelayCommand]
+    private void RemoveComments()
+    {
+        if (ActiveTab == null || string.IsNullOrEmpty(ActiveTab.Content))
+        {
+            return;
+        }
+        var text = ActiveTab.Content;
+        var blockComments = @"/\*[\s\S]*?\*/";
+        var lineComments = @"//.*";
+        var strings = @"""(?:\\.|[^""])*""";
+        var verbatimStrings = @"@""(?:""""|[^""])*""";
+
+        var pattern = $"{blockComments}|{lineComments}|{strings}|{verbatimStrings}";
+        ActiveTab.Content = System.Text.RegularExpressions.Regex.Replace(text, pattern, me =>
+        {
+            if (me.Value.StartsWith("/*") || me.Value.StartsWith("//"))
+            {
+                return "";
+            }
+            return me.Value;
+        });
+        ActiveTab.IsModified = true;
+        var temp = ActiveTab;
+        ActiveTab = null;
+        ActiveTab = temp;
+    }
     private void DetectTerminals()
     {
         TerminalProfiles.Clear();
@@ -554,35 +680,86 @@ public sealed partial class MainPageModel : ObservableObject
         var hasCSharp = dir.GetFiles("*.csproj", SearchOption.AllDirectories).Length > 0
                        || dir.GetFiles("*.slnx", SearchOption.AllDirectories).Length > 0;
         var hasMakefile = dir.GetFiles("Makefile", SearchOption.TopDirectoryOnly).Length > 0;
+        var hasC = dir.GetFiles("*.c", SearchOption.AllDirectories).Length > 0;
+        var hasCpp = dir.GetFiles("*.cpp", SearchOption.AllDirectories).Length > 0;
+        var hasPython = dir.GetFiles("*.py", SearchOption.AllDirectories).Length > 0;
+        var hasBash = dir.GetFiles("*.sh", SearchOption.AllDirectories).Length > 0;
 
         if (hasCSharp)
         {
             BuildProfiles.Add("Проект C#");
-            BuildTargets.Add("Основной проект");
         }
-        else
+        if (hasMakefile)
         {
-            BuildProfiles.Add("Один файл (C/C++)");
-            if (hasMakefile)
-            {
-                BuildProfiles.Add("Makefile");
-            }
-
-            foreach (var f in dir.GetFiles("*.*", SearchOption.AllDirectories)
-                                  .Where(f => f.Extension is ".c" or ".cpp"))
-            {
-                BuildTargets.Add(f.Name);
-            }
+            BuildProfiles.Add("Makefile");
+        }
+        if (hasC)
+        {
+            BuildProfiles.Add("C");
+        }
+        if (hasCpp)
+        {
+            BuildProfiles.Add("C++");
+        }
+        if (hasPython)
+        {
+            BuildProfiles.Add("Python");
+        }
+        if (hasBash)
+        {
+            BuildProfiles.Add("Bash");
         }
 
         if (BuildProfiles.Count > 0)
         {
             SelectedBuildProfile = BuildProfiles[0];
         }
-        if (BuildTargets.Count > 0)
+        else
         {
-            SelectedBuildTarget = BuildTargets[0];
+            SelectedBuildTarget = null;
         }
+    }
+
+    partial void OnSelectedBuildProfileChanged(string value)
+    {
+        if (string.IsNullOrEmpty(WorkspacePath))
+            return;
+        var dir = new DirectoryInfo(WorkspacePath);
+        BuildTargets.Clear();
+
+        if (value == "Проект C#")
+        {
+            BuildTargets.Add("Основной проект");
+        }
+        else if (value == "Makefile")
+        {
+            BuildTargets.Add("all");
+        }
+        else if (value == "C")
+        {
+            foreach (var f in dir.GetFiles("*.c", SearchOption.AllDirectories))
+                BuildTargets.Add(f.Name);
+        }
+        else if (value == "C++")
+        {
+            foreach (var f in dir.GetFiles("*.cpp", SearchOption.AllDirectories))
+                BuildTargets.Add(f.Name);
+        }
+        else if (value == "Python")
+        {
+            foreach (var f in dir.GetFiles("*.py", SearchOption.AllDirectories))
+                BuildTargets.Add(f.Name);
+        }
+        else if (value == "Bash")
+        {
+            foreach (var f in dir.GetFiles("*.sh", SearchOption.AllDirectories))
+                BuildTargets.Add(f.Name);
+        }
+
+        if (BuildTargets.Count > 0)
+            SelectedBuildTarget = BuildTargets[0];
+        else
+            SelectedBuildTarget = null;
     }
 
 #pragma warning disable CA1822

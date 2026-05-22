@@ -16,9 +16,13 @@
                 </Button>
                 <!-- Settings Button -->
                 <Button Content="⚙️" FontSize="14" Padding="8,4" Background="Transparent" Foreground="#CCCCCC" VerticalAlignment="Center" ToolTip.Tip="Настройки" Command="{Binding OpenSettingsCommand}"/>
+                <Button Content="🧹" FontSize="14" Padding="8,4" Background="Transparent" Foreground="#CCCCCC" VerticalAlignment="Center" ToolTip.Tip="Форматировать код" Command="{Binding FormatCodeCommand}"/>
+                <Button Content="💬" FontSize="14" Padding="8,4" Background="Transparent" Foreground="#CCCCCC" VerticalAlignment="Center" ToolTip.Tip="Удалить комментарии" Command="{Binding RemoveCommentsCommand}"/>
             </StackPanel>
             
             <StackPanel Orientation="Horizontal" Spacing="10" Grid.Column="2">
+                <ComboBox ItemsSource="{Binding BuildProfiles}" SelectedItem="{Binding SelectedBuildProfile}" VerticalAlignment="Center" Width="150"/>
+                <ComboBox ItemsSource="{Binding BuildTargets}" SelectedItem="{Binding SelectedBuildTarget}" VerticalAlignment="Center" Width="150"/>
                 <Button Command="{Binding RunCommandCommand}" 
                         Background="#7C3AED" Foreground="White" 
                         BorderThickness="0" CornerRadius="4" Padding="15,6">

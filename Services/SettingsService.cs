@@ -1,11 +1,21 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace CIDE.Services;
 
+[JsonSerializable(typeof(SettingsService))]
+internal sealed partial class SettingsJsonContext : JsonSerializerContext
+{
+}
+
 public partial class SettingsService : ObservableObject
 {
+    private static readonly string t_settingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+    private static readonly JsonSerializerOptions t_jsonOptions = new() { WriteIndented = true, TypeInfoResolver = SettingsJsonContext.Default };
+
     private static SettingsService? t_instance;
-    public static SettingsService Instance => t_instance ??= new SettingsService();
+    public static SettingsService Instance => t_instance ??= Load();
 
     [ObservableProperty]
     public partial bool ShowMinimap { get; set; } = true;
@@ -18,19 +28,51 @@ public partial class SettingsService : ObservableObject
 
     [ObservableProperty]
     public partial bool AutoSave { get; set; } = true;
-    
+
+    [ObservableProperty]
+    public partial bool UseLocalClangFormat { get; set; } = true;
+
+    [ObservableProperty]
+    public partial string ClangFormatPath { get; set; } = "";
     [ObservableProperty]
     public partial long LastUpdateId { get; set; } = 0;
-    
     public List<string> RecentWorkspaces { get; set; } = [];
 
-    private SettingsService()
+    public SettingsService()
     {
     }
 
-#pragma warning disable CA1822
+    private static SettingsService Load()
+    {
+        try
+        {
+            if (File.Exists(t_settingsFilePath))
+            {
+                var json = File.ReadAllText(t_settingsFilePath);
+                var settings = JsonSerializer.Deserialize<SettingsService>(json, t_jsonOptions);
+                if (settings != null)
+                {
+                    return settings;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Ошибка загрузки настроек: {ex.Message}");
+        }
+        return new SettingsService();
+    }
+
     public void Save()
     {
+        try
+        {
+            var json = JsonSerializer.Serialize(this, t_jsonOptions);
+            File.WriteAllText(t_settingsFilePath, json);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Ошибка сохранения настроек: {ex.Message}");
+        }
     }
-#pragma warning restore CA1822
 }

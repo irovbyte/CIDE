@@ -8,7 +8,7 @@
 
     <Grid>
         <!-- Заглушка, когда нет открытых вкладок -->
-        <Border Background="#1E1E1E" IsVisible="{Binding !IsEditorVisible}">
+        <Border Background="#141414" BorderBrush="#2D2D2D" BorderThickness="1" CornerRadius="8" IsVisible="{Binding !IsEditorVisible}" ClipToBounds="True">
             <Border.Transitions>
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
@@ -19,54 +19,91 @@
         </Border>
 
         <!-- Сам редактор и Миникарта -->
-        <Grid IsVisible="{Binding IsEditorVisible}" ColumnDefinitions="*, Auto">
+        <Grid IsVisible="{Binding IsEditorVisible}" RowDefinitions="Auto, 8, *">
             
-            <!-- Заглушка для бинарных файлов -->
-            <Border Grid.Column="0" Grid.ColumnSpan="2" Background="#1E1E1E" IsVisible="{Binding ActiveTab.IsBinary}">
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="15">
-                    <TextBlock Text="📦" FontSize="64" HorizontalAlignment="Center"/>
-                    <TextBlock Text="Этот файл является бинарным и не может быть отображен в редакторе кода." 
-                               Foreground="#858585" FontSize="16" HorizontalAlignment="Center" />
-                </StackPanel>
+            <!-- Вкладки (Остров 1) -->
+            <Border Grid.Row="0" Background="#141414" BorderBrush="#2D2D2D" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" AllowAutoHide="True">
+                    <ItemsControl ItemsSource="{Binding Tabs}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Background="Transparent"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{Binding BackgroundBrush}" BorderBrush="#2D2D2D" BorderThickness="0,0,1,0" CornerRadius="0">
+                                <Button Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).ActivateTabCommand}"
+                                        CommandParameter="{Binding}"
+                                        Background="Transparent" BorderThickness="0" Padding="12,8" CornerRadius="0">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" Foreground="#E0E0E0" FontSize="13"/>
+                                        <Button Content="✕" 
+                                                Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).CloseTabCommand}"
+                                                CommandParameter="{Binding}"
+                                                Background="Transparent" BorderThickness="0" Foreground="#A0A0A0"
+                                                VerticalAlignment="Center" Padding="4,2" FontSize="10" CornerRadius="4"/>
+                                    </StackPanel>
+                                </Button>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                </ScrollViewer>
             </Border>
 
-            <!-- Текстовый редактор -->
-            <AvaloniaEdit:TextEditor x:Name="CodeEditor" 
-                                     Grid.Column="0"
-                                     Background="#1E1E1E"
-                                     Foreground="#ECE9FC"
-                                     FontFamily="Consolas"
-                                     FontSize="14"
-                                     ShowLineNumbers="True"
-                                     WordWrap="False"
-                                     IsVisible="{Binding ActiveTab.IsText}"
-                                     TextChanged="CodeEditor_TextChanged">
-            </AvaloniaEdit:TextEditor>
+            <!-- Текстовый редактор (Остров 2) -->
+            <Border Grid.Row="2" Background="#141414" BorderBrush="#2D2D2D" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                <Grid ColumnDefinitions="*, Auto">
+                    <!-- Заглушка для бинарных файлов -->
+                    <Border Grid.Column="0" Grid.ColumnSpan="2" Background="#141414" IsVisible="{Binding ActiveTab.IsBinary}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="15">
+                            <TextBlock Text="📦" FontSize="64" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Этот файл является бинарным и не может быть отображен в редакторе кода." 
+                                       Foreground="#858585" FontSize="16" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
 
-            <!-- Миникарта -->
-            <Border Grid.Column="1" 
-                    Width="100" 
-                    BorderBrush="#333333" 
-                    BorderThickness="1,0,0,0">
-                <Border.IsVisible>
-                    <MultiBinding Converter="{x:Static BoolConverters.And}">
-                        <Binding Path="ActiveTab.IsText" FallbackValue="False" />
-                        <Binding Path="Settings.ShowMinimap" FallbackValue="False" />
-                    </MultiBinding>
-                </Border.IsVisible>
-                <AvaloniaEdit:TextEditor x:Name="MinimapEditor"
-                                         Background="#1E1E1E"
-                                         Foreground="#858585"
-                                         FontFamily="Consolas"
-                                         FontSize="3"
-                                         ShowLineNumbers="False"
-                                         WordWrap="False"
-                                         IsReadOnly="True"
-                                         HorizontalScrollBarVisibility="Hidden"
-                                         VerticalScrollBarVisibility="Hidden"
-                                         PointerPressed="MinimapEditor_PointerPressed"
-                                         PointerMoved="MinimapEditor_PointerMoved"
-                                         PointerReleased="MinimapEditor_PointerReleased"/>
+                    <!-- Текстовый редактор -->
+                    <AvaloniaEdit:TextEditor x:Name="CodeEditor" 
+                                             Grid.Column="0"
+                                             Background="#141414"
+                                             Foreground="#ECE9FC"
+                                             FontFamily="Consolas"
+                                             FontSize="14"
+                                             ShowLineNumbers="True"
+                                             WordWrap="False"
+                                             IsVisible="{Binding ActiveTab.IsText}"
+                                             TextChanged="CodeEditor_TextChanged"
+                                             Margin="4,4,0,4">
+                    </AvaloniaEdit:TextEditor>
+
+                    <!-- Миникарта -->
+                    <Border Grid.Column="1" 
+                            Width="100" 
+                            BorderBrush="#2D2D2D" 
+                            BorderThickness="1,0,0,0">
+                        <Border.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="ActiveTab.IsText" FallbackValue="False" />
+                                <Binding Path="Settings.ShowMinimap" FallbackValue="False" />
+                            </MultiBinding>
+                        </Border.IsVisible>
+                        <AvaloniaEdit:TextEditor x:Name="MinimapEditor"
+                                                 Background="#141414"
+                                                 Foreground="#858585"
+                                                 FontFamily="Consolas"
+                                                 FontSize="3"
+                                                 ShowLineNumbers="False"
+                                                 WordWrap="False"
+                                                 IsReadOnly="True"
+                                                 HorizontalScrollBarVisibility="Hidden"
+                                                 VerticalScrollBarVisibility="Hidden"
+                                                 PointerPressed="MinimapEditor_PointerPressed"
+                                                 PointerMoved="MinimapEditor_PointerMoved"
+                                                 PointerReleased="MinimapEditor_PointerReleased"/>
+                    </Border>
+                </Grid>
             </Border>
         </Grid>
     </Grid>

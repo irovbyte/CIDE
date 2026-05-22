@@ -5,14 +5,14 @@
              xmlns:helpers="clr-namespace:CIDE.Helpers"
              x:DataType="vm:MainPageModel"
              x:Class="CIDE.Views.SidebarView"
-             Background="#252526">
+             Background="Transparent">
 
     <UserControl.Resources>
         <helpers:DepthToMarginConverter x:Key="DepthToMarginConverter" />
     </UserControl.Resources>
 
     <Grid RowDefinitions="Auto, *">
-        <TextBlock Text="ОБОЗРЕВАТЕЛЬ" FontSize="11" FontWeight="Bold" Foreground="#858585" Margin="15,15,15,10" />
+        <TextBlock Text="ОБОЗРЕВАТЕЛЬ" FontSize="11" FontWeight="Bold" Foreground="#858585" Margin="15,8,15,10" />
 
         <ListBox Grid.Row="1" ItemsSource="{Binding FlatTree}" Background="Transparent" BorderThickness="0">
             <ListBox.ItemTemplate>

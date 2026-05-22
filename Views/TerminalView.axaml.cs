@@ -1,296 +1,86 @@
 using System;
-using System.Diagnostics;
-using System.Globalization;
-using System.Text;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
-using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
-using Avalonia.Threading;
+using Avalonia;
+using Iciclecreek.Terminal;
 
 namespace CIDE.Views;
 
 public partial class TerminalView : UserControl, IDisposable
 {
     private bool _disposed;
-    private Process? _shellProcess;
-    private readonly StringBuilder _outputBuffer = new();
-    private bool _isTerminalMode;
-    private string _currentProfile = "powershell";
+    private TerminalControl? _terminal;
 
     public TerminalView()
     {
         InitializeComponent();
-        
-        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        DetachedFromVisualTree += (_, _) => Dispose();
+    }
 
-        OutputToggle.IsCheckedChanged += OnOutputToggleChanged;
-        TerminalToggle.IsCheckedChanged += OnTerminalToggleChanged;
-        NewTerminalButton.Click += OnNewTerminalClick;
-        TerminalInput.KeyDown += OnTerminalInputKeyDown;
-        ProfileComboBox.SelectionChanged += OnProfileSelectionChanged;
-        DetachedFromVisualTree += OnDetachedFromVisualTree;
-        
-        // Focus input on click in terminal panel
-        TerminalPanel.PointerPressed += (s, e) => {
-            if (_isTerminalMode)
-                TerminalInput.Focus();
+    private bool _isRunning;
+
+    public void Initialize()
+    {
+        if (_isRunning)
+        {
+            return;
+        }
+
+        StartProcess();
+    }
+
+    public void StartProcess(string? profileName = null)
+    {
+        var profile = profileName ?? "PowerShell";
+        var exe = profile.ToLowerInvariant() switch
+        {
+            "cmd" => "cmd.exe",
+            "wsl" => "wsl.exe",
+            _ => "powershell.exe"
         };
-    }
-
-    private void OnOutputToggleChanged(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-    {
-        if (OutputToggle.IsChecked == true)
-        {
-            ToggleMode(isTerminal: false);
-        }
-        else
-        {
-            if (!_isTerminalMode)
-            {
-                OutputToggle.IsChecked = true;
-            }
-        }
-    }
-
-    private void OnTerminalToggleChanged(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-    {
-        if (TerminalToggle.IsChecked == true)
-        {
-            ToggleMode(isTerminal: true);
-        }
-        else
-        {
-            if (_isTerminalMode)
-            {
-                TerminalToggle.IsChecked = true;
-            }
-        }
-    }
-
-    private void ToggleMode(bool isTerminal)
-    {
-        _isTerminalMode = isTerminal;
-        OutputToggle.IsChecked = !isTerminal;
-        TerminalToggle.IsChecked = isTerminal;
-
-        OutputToggle.Foreground = isTerminal
-            ? new SolidColorBrush(Color.Parse("#858585"))
-            : new SolidColorBrush(Color.Parse("#CCCCCC"));
-        TerminalToggle.Foreground = isTerminal
-            ? new SolidColorBrush(Color.Parse("#CCCCCC"))
-            : new SolidColorBrush(Color.Parse("#858585"));
-
-        OutputToggle.BorderThickness = isTerminal
-            ? new Thickness(0)
-            : new Thickness(0, 0, 0, 1);
-        OutputToggle.BorderBrush = new SolidColorBrush(Color.Parse("#007ACC"));
-
-        TerminalToggle.BorderThickness = isTerminal
-            ? new Thickness(0, 0, 0, 1)
-            : new Thickness(0);
-        TerminalToggle.BorderBrush = new SolidColorBrush(Color.Parse("#007ACC"));
-
-        OutputScrollViewer.IsVisible = !isTerminal;
-        TerminalPanel.IsVisible = isTerminal;
-
-        if (isTerminal && _shellProcess is null)
-        {
-            StartShell(_currentProfile);
-        }
-        if (isTerminal)
-        {
-            Dispatcher.UIThread.Post(() => TerminalInput.Focus(), DispatcherPriority.Background);
-        }
-    }
-
-    private void StartShell(string profile)
-    {
-        StopShell();
-
-        _currentProfile = profile.ToLowerInvariant();
-        _outputBuffer.Clear();
-        TerminalOutput.Text = string.Empty;
-
-        var (fileName, args, prompt) = _currentProfile switch
-        {
-            "cmd" => ("cmd.exe", "/Q", ">"),
-            "wsl" => ("wsl.exe", "", "$"),
-            _ => ("powershell.exe", "-NoLogo -NoProfile", "PS>")
-        };
-
-        PromptLabel.Text = prompt;
+        string[] args = exe == "powershell.exe" ? ["-NoLogo"] : [];
 
         try
         {
-            Encoding shellEncoding;
-            try 
+            if (_terminal != null)
             {
-                shellEncoding = Encoding.GetEncoding(CultureInfo.CurrentCulture.TextInfo.OEMCodePage);
-            }
-            catch 
-            {
-                shellEncoding = Encoding.GetEncoding(866);
+                _ = TerminalContainer.Children.Remove(_terminal);
+                try
+                { _terminal.Kill(); }
+                catch { }
+                _terminal = null;
             }
 
-            _shellProcess = new Process
+            _terminal = new TerminalControl
             {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = fileName,
-                    Arguments = args,
-                    RedirectStandardInput = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true,
-                    UseShellExecute = false,
-                    StandardOutputEncoding = shellEncoding,
-                    StandardErrorEncoding = shellEncoding
-                },
-                EnableRaisingEvents = true
+                FontFamily = FontFamily.Parse("Cascadia Code, Consolas, monospace"),
+                FontSize = 14,
+                Foreground = Brush.Parse("#D4D4D4"),
+                Background = Brushes.Transparent,
+                Margin = new Thickness(4)
             };
 
-            _shellProcess.OutputDataReceived += OnShellOutputReceived;
-            _shellProcess.ErrorDataReceived += OnShellErrorReceived;
-            _shellProcess.Exited += OnShellExited;
+            TerminalContainer.Children.Add(_terminal);
 
-            _shellProcess.Start();
-            _shellProcess.BeginOutputReadLine();
-            _shellProcess.BeginErrorReadLine();
-
-            AppendOutput($"[{profile} started]\n");
+            _ = _terminal.LaunchProcess(Environment.CurrentDirectory, exe, args);
+            _isRunning = true;
         }
-        catch (Exception ex)
+        catch
         {
-            AppendOutput($"[Error starting {profile}: {ex.Message}]\n");
-            _shellProcess = null;
-        }
-    }
-
-    private void StopShell()
-    {
-        if (_shellProcess is null)
-            return;
-
-        try
-        {
-            _shellProcess.OutputDataReceived -= OnShellOutputReceived;
-            _shellProcess.ErrorDataReceived -= OnShellErrorReceived;
-            _shellProcess.Exited -= OnShellExited;
-
-            if (!_shellProcess.HasExited)
-            {
-                _shellProcess.Kill(entireProcessTree: true);
-            }
-        }
-        catch { }
-        finally
-        {
-            _shellProcess.Dispose();
-            _shellProcess = null;
-        }
-    }
-
-    private void OnShellOutputReceived(object? sender, DataReceivedEventArgs e)
-    {
-        if (e.Data is not null)
-        {
-            AppendOutput(e.Data + "\n");
-        }
-    }
-
-    private void OnShellErrorReceived(object? sender, DataReceivedEventArgs e)
-    {
-        if (e.Data is not null)
-        {
-            AppendOutput(e.Data + "\n");
-        }
-    }
-
-    private void OnShellExited(object? sender, EventArgs e) => AppendOutput("\n[Process exited]\n");
-
-    private void AppendOutput(string text)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            _outputBuffer.Append(text);
-            if (_outputBuffer.Length > 60000)
-            {
-                _outputBuffer.Remove(0, _outputBuffer.Length - 50000);
-            }
-
-            TerminalOutput.Text = _outputBuffer.ToString();
-            TerminalScrollViewer.ScrollToEnd();
-        });
-    }
-
-    private void SendCommand(string command)
-    {
-        if (_shellProcess is null || _shellProcess.HasExited)
-        {
-            AppendOutput("[Terminal is not running. Restarting...]\n");
-            StartShell(_currentProfile);
-            return;
-        }
-
-        try
-        {
-            _shellProcess.StandardInput.WriteLine(command);
-            _shellProcess.StandardInput.Flush();
-        }
-        catch (Exception ex)
-        {
-            AppendOutput($"[Error sending command: {ex.Message}]\n");
-        }
-    }
-
-    private void OnTerminalInputKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter)
-        {
-            var command = TerminalInput.Text ?? string.Empty;
-            AppendOutput($"{PromptLabel.Text} {command}\n");
-            SendCommand(command);
-            TerminalInput.Text = string.Empty;
-            e.Handled = true;
-        }
-    }
-
-    private void OnNewTerminalClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-    {
-        StartShell(_currentProfile);
-        if (!_isTerminalMode)
-        {
-            ToggleMode(isTerminal: true);
-        }
-    }
-
-    private void OnProfileSelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (ProfileComboBox.SelectedItem is string selected && !string.IsNullOrEmpty(selected))
-        {
-            var profile = selected.ToLowerInvariant();
-            if (profile != _currentProfile && _isTerminalMode)
-            {
-                StartShell(profile);
-            }
-            else
-            {
-                _currentProfile = profile;
-            }
         }
     }
 
     public void Dispose()
     {
-        if (_disposed) return;
-        
-        StopShell();
-        
+        if (_disposed)
+        {
+            return;
+        }
         _disposed = true;
+        try
+        { _terminal?.Kill(); }
+        catch { }
         GC.SuppressFinalize(this);
     }
-
-    private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e) => StopShell();
 }

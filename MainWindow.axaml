@@ -7,54 +7,119 @@
         Title="CIDE"
         Icon="avares://CIDE/Assets/cide_logo.png"
         Width="1200" Height="900"
-        Background="#1E1E1E"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaTitleBarHeightHint="-1"
+        Background="#181818"
         WindowStartupLocation="CenterScreen">
 
-    <Grid>
-        <!-- Splash Screen -->
-        <views:SplashView IsVisible="{Binding IsLoadingState}" />
+    <Grid RowDefinitions="Auto, *">
+        <!-- Animated Background (Behind Everything) -->
+        <Border Grid.RowSpan="2" IsHitTestVisible="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                    <GradientStop Color="#252525" Offset="0" />
+                    <GradientStop Color="#181818" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+        
+        <!-- Toolbar (Floating Island) -->
+        <Border Grid.Row="0" IsVisible="{Binding IsWorkspaceOpen}" Background="#141414" BorderBrush="#2D2D2D" BorderThickness="1" CornerRadius="8" Margin="8,8,8,4" Height="46">
+            <Grid ColumnDefinitions="Auto, *, Auto">
+                <!-- Left: Tools -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" Margin="6,0,0,0" VerticalAlignment="Center">
+                    <Button Classes="subtle" Command="{Binding GoBackCommand}" ToolTip.Tip="Назад">
+                        <TextBlock Text="⬅ Назад" FontSize="13"/>
+                    </Button>
+                    <Button Classes="subtle" Content="⚙️ Настройки" FontSize="13" ToolTip.Tip="Настройки" Command="{Binding OpenSettingsCommand}"/>
+                    <Button Classes="subtle" Content="🧹 Чистка кода" FontSize="13" ToolTip.Tip="Форматировать код" Command="{Binding FormatCodeCommand}"/>
+                    <Button Classes="subtle" Content="💬 Убрать комменты" FontSize="13" ToolTip.Tip="Удалить комментарии" Command="{Binding RemoveCommentsCommand}"/>
+                </StackPanel>
 
-        <!-- Welcome Screen -->
-        <views:WelcomeView IsVisible="{Binding IsWelcomeState}" />
+                <!-- Right: Build Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsWorkspaceOpen}" VerticalAlignment="Center" Margin="0,0,6,0">
+                    <ComboBox ItemsSource="{Binding BuildProfiles}" SelectedItem="{Binding SelectedBuildProfile}" VerticalAlignment="Center" Width="130" Background="#1E1E1E" Foreground="#D4D4D4" BorderBrush="#2D2D2D" CornerRadius="4" MinHeight="28"/>
+                    <ComboBox ItemsSource="{Binding BuildTargets}" SelectedItem="{Binding SelectedBuildTarget}" VerticalAlignment="Center" Width="160" Background="#1E1E1E" Foreground="#D4D4D4" BorderBrush="#2D2D2D" CornerRadius="4" MinHeight="28"/>
+                    <Button Classes="accent" Command="{Binding RunCommandCommand}" Padding="16,4" MinHeight="28" CornerRadius="4">
+                        <TextBlock Text="▶ Run" FontSize="12" VerticalAlignment="Center"/>
+                    </Button>
+                    <Button Classes="ghost" Command="{Binding ToggleOutputCommand}" Padding="12,4" MinHeight="28" CornerRadius="4">
+                        <TextBlock Text="Terminal" FontSize="12" VerticalAlignment="Center"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
 
-        <!-- IDE Workspace -->
-        <Grid IsVisible="{Binding IsWorkspaceOpen}" RowDefinitions="Auto, *, 24">
-            <!-- Toolbar (now includes Settings) -->
-            <views:ToolbarView x:Name="ToolbarPanel" Grid.Row="0" Margin="0,35,0,0"/>
+        <!-- Main Content -->
+        <Grid Grid.Row="1">
+                <!-- Splash Screen -->
+                <views:SplashView IsVisible="{Binding IsLoadingState}" />
 
-            <!-- Main Area -->
-            <Grid Grid.Row="1" Margin="0" ColumnDefinitions="250, 4, *">
-                <Border Grid.Column="0" Background="#252526">
-                    <views:SidebarView x:Name="SidebarPanel" />
-                </Border>
-                
-                <GridSplitter Grid.Column="1" Background="#333333" ResizeDirection="Columns" Width="4"/>
-                
-                <Grid x:Name="EditorPanel" Grid.Column="2" RowDefinitions="*, 4, Auto">
-                    <views:EditorView x:Name="EditorViewControl" Grid.Row="0" />
-                    
-                    <GridSplitter Grid.Row="1" Background="#333333" ResizeDirection="Rows" Height="4" IsVisible="{Binding IsOutputVisible}"/>
+                <!-- Welcome Screen -->
+                <views:WelcomeView IsVisible="{Binding IsWelcomeState}" />
 
-                    <Border Grid.Row="2" BorderBrush="#333333" BorderThickness="0,1,0,0">
-                        <views:TerminalView x:Name="OutputPanel" Margin="0,4,0,0" />
+                <!-- IDE Workspace -->
+                <Grid IsVisible="{Binding IsWorkspaceOpen}" RowDefinitions="*, 24">
+                    <!-- Main Area -->
+                    <Grid Grid.Row="0" Margin="8,4,8,8" ColumnDefinitions="250, 8, *">
+                        <Border Grid.Column="0" Background="#141414" BorderBrush="#2D2D2D" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                            <views:SidebarView x:Name="SidebarPanel" />
+                        </Border>
+                        
+                        <GridSplitter Grid.Column="1" Background="Transparent" ResizeDirection="Columns" Width="8"/>
+                        
+                        <Grid x:Name="EditorPanel" Grid.Column="2" RowDefinitions="*, 0, 0">
+                            <!-- Removed Wrapper Border so EditorView can split itself into islands -->
+                            <views:EditorView x:Name="EditorViewControl" Grid.Row="0" />
+                            
+                            <GridSplitter Grid.Row="1" Background="Transparent" ResizeDirection="Rows" Height="8" IsVisible="{Binding IsOutputVisible}"/>
+
+                            <Border Grid.Row="2" BorderBrush="#2D2D2D" BorderThickness="1" CornerRadius="8" Background="#141414" ClipToBounds="True" IsVisible="{Binding IsOutputVisible}">
+                                <Grid>
+                                    <TabControl x:Name="OutputTabControl" Margin="0" Background="Transparent" Padding="0">
+                                        <TabItem Header="Терминал" FontSize="12">
+                                            <views:TerminalView x:Name="MainTerminalView" Margin="0,4,0,0" />
+                                        </TabItem>
+                                        <TabItem Header="Вывод" FontSize="12">
+                                            <ScrollViewer Margin="4" Padding="8">
+                                                <SelectableTextBlock FontFamily="Cascadia Code, Consolas, monospace" FontSize="13" Foreground="#D4D4D4" TextWrapping="Wrap" Text="{Binding CompilerOutput}"/>
+                                            </ScrollViewer>
+                                        </TabItem>
+                                        <TabItem Header="Список ошибок" FontSize="12">
+                                            <ListBox Background="Transparent" Foreground="#D4D4D4" Margin="4" BorderThickness="0">
+                                                <ListBoxItem Foreground="#F44336">[Error] CS1002: ; expected in Program.cs (Line 12)</ListBoxItem>
+                                                <ListBoxItem Foreground="#FFEB3B">[Warning] CS0168: The variable 'x' is declared but never used</ListBoxItem>
+                                                <ListBoxItem Foreground="#B0BEC5">[Info] Build started...</ListBoxItem>
+                                            </ListBox>
+                                        </TabItem>
+                                    </TabControl>
+
+                                    <!-- Smart Terminal Controls (Overlaid on top right) -->
+                                    <StackPanel x:Name="TerminalControlsPanel" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,8,0" Spacing="4">
+                                        <ComboBox x:Name="ProfileComboBox" MinWidth="120" MaxHeight="24" FontSize="11" VerticalAlignment="Center" Background="#1E1E1E" Foreground="#D4D4D4" BorderBrush="#2D2D2D" BorderThickness="1" CornerRadius="4" Padding="8,0">
+                                            <ComboBoxItem>PowerShell</ComboBoxItem>
+                                            <ComboBoxItem>CMD</ComboBoxItem>
+                                            <ComboBoxItem>WSL</ComboBoxItem>
+                                        </ComboBox>
+                                        <Button x:Name="NewTermBtn" Content="＋" Background="Transparent" Foreground="#858585" BorderThickness="0" Padding="6,0" Height="24" FontSize="13" CornerRadius="4" VerticalAlignment="Center" Cursor="Hand" ToolTip.Tip="Новый терминал" />
+                                        <Button x:Name="ClearBtn" Content="🗑" Background="Transparent" Foreground="#858585" BorderThickness="0" Padding="6,0" Height="24" FontSize="13" CornerRadius="4" VerticalAlignment="Center" Cursor="Hand" ToolTip.Tip="Очистить" />
+                                        <Button x:Name="HideTerminalBtn" Content="✕" Background="Transparent" Foreground="#858585" BorderThickness="0" Padding="6,0" Height="24" FontSize="13" CornerRadius="4" VerticalAlignment="Center" Cursor="Hand" ToolTip.Tip="Свернуть панель" Command="{Binding ToggleOutputCommand}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Grid>
+
+                    <!-- Status Bar (Properly rounded and attached to bottom) -->
+                    <Border Grid.Row="1" Background="#7C3AED" CornerRadius="0">
+                        <Grid ColumnDefinitions="Auto, Auto, *, Auto, Auto, Auto" Margin="14,0">
+                            <Border Grid.Column="0" Background="#9061F9" CornerRadius="2" Padding="6,0" VerticalAlignment="Center" Margin="0,2">
+                                <TextBlock Text="{Binding SelectedBuildProfile}" Foreground="White" FontSize="10" FontWeight="Bold" />
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{Binding StatusText}" Foreground="White" Opacity="0.9" FontSize="11" VerticalAlignment="Center" Margin="16,0,0,0" />
+                            <TextBlock Grid.Column="4" Text="LF | UTF-8" Foreground="#E0D4FC" FontSize="11" VerticalAlignment="Center" Margin="0,0,16,0" />
+                            <TextBlock Grid.Column="5" Text="CIDE Avalonia v2.0" Foreground="#E0D4FC" FontSize="11" VerticalAlignment="Center" />
+                        </Grid>
                     </Border>
                 </Grid>
             </Grid>
-
-            <!-- Status Bar -->
-            <Border Grid.Row="2" Background="#7C3AED">
-                <Grid ColumnDefinitions="Auto, Auto, *, Auto, Auto, Auto" Margin="14,0">
-                    <Border Grid.Column="0" Background="#A78BFA" CornerRadius="2" Padding="6,0" VerticalAlignment="Center" Margin="0,2">
-                        <TextBlock Text="{Binding SelectedBuildProfile}" Foreground="#1E1E1E" FontSize="10" FontWeight="Bold" />
-                    </Border>
-                    <TextBlock Grid.Column="1" Text="{Binding StatusText}" Foreground="White" Opacity="0.9" FontSize="11" VerticalAlignment="Center" Margin="16,0,0,0" />
-                    <TextBlock Grid.Column="4" Text="LF | UTF-8" Foreground="#E0D4FC" FontSize="11" VerticalAlignment="Center" Margin="0,0,16,0" />
-                    <TextBlock Grid.Column="5" Text="CIDE Avalonia v2.0" Foreground="#E0D4FC" FontSize="11" VerticalAlignment="Center" />
-                </Grid>
-            </Border>
-
-        </Grid>
     </Grid>
 </Window>

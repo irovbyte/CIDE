@@ -41,22 +41,33 @@ public static class ToolchainService
             }
         }
 
-        onProgress("Распаковка компилятора (это займет пару минут)...");
-        await Task.Run(() =>
+        try
         {
-            if (Directory.Exists(MinGWDir))
+            onProgress("Распаковка компилятора (это займет пару минут)...");
+            await Task.Run(() =>
             {
-                Directory.Delete(MinGWDir, true);
+                if (Directory.Exists(MinGWDir))
+                {
+                    Directory.Delete(MinGWDir, true);
+                }
+
+                ZipFile.ExtractToDirectory(zipPath, ToolchainDir);
+            });
+
+            if (File.Exists(zipPath))
+            {
+                File.Delete(zipPath);
             }
 
-            ZipFile.ExtractToDirectory(zipPath, ToolchainDir);
-        });
-
-        if (File.Exists(zipPath))
-        {
-            File.Delete(zipPath);
+            onProgress("Установка компилятора завершена!");
         }
-
-        onProgress("Установка компилятора завершена!");
+        catch (Exception ex)
+        {
+            onProgress($"Ошибка распаковки: {ex.Message}");
+            if (File.Exists(zipPath))
+            {
+                File.Delete(zipPath);
+            }
+        }
     }
 }

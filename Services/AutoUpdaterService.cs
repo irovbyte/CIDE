@@ -26,9 +26,14 @@ public class GitHubAsset
     public string DownloadUrl { get; set; } = "";
 }
 
+[JsonSerializable(typeof(GitHubRelease))]
+internal sealed partial class UpdateJsonContext : JsonSerializerContext
+{
+}
+
 public static class AutoUpdaterService
 {
-    private const string CurrentVersion = "v1.0.0"; 
+    private const string CurrentVersion = "v1.0.0";
     private const string RepoUrl = "https://api.github.com/repos/irovbyte/CIDE/releases/latest";
 
     public static async Task CheckForUpdatesAsync(Action<string> onProgress)
@@ -39,7 +44,7 @@ public static class AutoUpdaterService
             client.DefaultRequestHeaders.Add("User-Agent", "CIDE-AutoUpdater");
 
             onProgress("Проверка обновлений...");
-            var release = await client.GetFromJsonAsync<GitHubRelease>(RepoUrl);
+            var release = await client.GetFromJsonAsync(RepoUrl, UpdateJsonContext.Default.GitHubRelease);
 
             if (release != null && release.Id != SettingsService.Instance.LastUpdateId)
             {
@@ -87,14 +92,13 @@ public static class AutoUpdaterService
                     }
 
                     onProgress("Обновление установлено. Перезапуск...");
-                    await Task.Delay(1000); 
+                    await Task.Delay(1000);
 
                     _ = Process.Start(new ProcessStartInfo
                     {
                         FileName = currentExe,
                         UseShellExecute = true
                     });
-                    
                     SettingsService.Instance.LastUpdateId = release.Id;
                     SettingsService.Instance.Save();
                     Environment.Exit(0);

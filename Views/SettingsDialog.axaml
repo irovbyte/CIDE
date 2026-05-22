@@ -5,38 +5,38 @@
         Title="Настройки"
         Width="500" Height="400"
         WindowStartupLocation="CenterOwner"
-        Background="#1E1E1E"
-        CanResize="False"
-        ExtendClientAreaToDecorationsHint="True">
+        Background="#181818"
+        ShowInTaskbar="False">
 
-    <Grid RowDefinitions="40, *, 60">
-        <!-- Заголовок -->
-        <TextBlock Grid.Row="0" Text="Настройки" FontSize="18" FontWeight="Bold" Foreground="#ECE9FC" VerticalAlignment="Center" Margin="20,0,0,0"/>
-
-        <Border Grid.Row="1" Background="#252526" BorderBrush="#333333" BorderThickness="0,1" Padding="20">
+    <Grid RowDefinitions="*, Auto" Margin="12">
+        <Border Grid.Row="0" Background="#141414" BorderBrush="#2D2D2D" BorderThickness="1" CornerRadius="4" Padding="20">
             <TabControl Background="Transparent">
-                <TabItem Header="Редактор" Foreground="#ECE9FC">
+                <TabItem Header="Редактор" FontSize="14" Foreground="#ECE9FC">
                     <StackPanel Spacing="15" Margin="0,15,0,0">
                         <TextBlock Text="Настройки внешнего вида и поведения редактора кода." Foreground="#858585" FontSize="12" Margin="0,0,0,10" TextWrapping="Wrap"/>
                         
-                        <CheckBox x:Name="MinimapCheckBox" Content="Показывать миникарту" Foreground="#ECE9FC" />
-                        
-                        <CheckBox x:Name="WhitespacesCheckBox" Content="Показывать невидимые символы (пробелы, табы)" Foreground="#ECE9FC" />
-                        
-                        <CheckBox x:Name="BracketsCheckBox" Content="Подсветка парных скобок" Foreground="#ECE9FC" />
-
-                        <CheckBox x:Name="AutoSaveCheckBox" Content="Автосохранение" Foreground="#ECE9FC" />
+                        <CheckBox x:Name="MinimapCheckBox" Content="Показывать миникарту" Foreground="#D4D4D4" />
+                        <CheckBox x:Name="WhitespacesCheckBox" Content="Показывать невидимые символы (пробелы, табы)" Foreground="#D4D4D4" />
+                        <CheckBox x:Name="BracketsCheckBox" Content="Подсветка парных скобок" Foreground="#D4D4D4" />
+                        <CheckBox x:Name="AutoSaveCheckBox" Content="Автосохранение" Foreground="#D4D4D4" />
                     </StackPanel>
                 </TabItem>
-                <TabItem Header="Окружение" Foreground="#ECE9FC">
-                    <TextBlock Text="Дополнительные настройки IDE будут здесь." Foreground="#858585" Margin="0,15,0,0"/>
+                <TabItem Header="Форматирование" FontSize="14" Foreground="#ECE9FC">
+                    <StackPanel Spacing="15" Margin="0,15,0,0">
+                        <TextBlock Text="Настройки автоформатирования кода." Foreground="#858585" Margin="0,0,0,10"/>
+                        <CheckBox x:Name="UseLocalClangFormatCheckBox" Content="Использовать clang-format (для C/C++)" Foreground="#D4D4D4" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="Путь к clang-format:" Foreground="#D4D4D4" VerticalAlignment="Center" />
+                            <TextBox x:Name="ClangFormatPathTextBox" Width="250" Background="#1E1E1E" Foreground="#D4D4D4" BorderBrush="#2D2D2D" Watermark="по умолчанию: clang-format"/>
+                        </StackPanel>
+                    </StackPanel>
                 </TabItem>
             </TabControl>
         </Border>
 
         <!-- Кнопки -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" VerticalAlignment="Center" Margin="0,0,20,0">
-            <Button x:Name="CloseButton" Content="Закрыть" Width="100" HorizontalContentAlignment="Center" Background="#7C3AED" Foreground="White" FontWeight="Bold"/>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,12,0,0">
+            <Button x:Name="CloseButton" Content="Закрыть" Width="100" HorizontalContentAlignment="Center" Background="#0078D4" Foreground="White" CornerRadius="4" FontWeight="Bold"/>
         </StackPanel>
     </Grid>
 </Window>

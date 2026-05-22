@@ -19,6 +19,13 @@ public partial class SettingsDialog : Window
         BracketsCheckBox.IsCheckedChanged += (s, e) => settings.HighlightBrackets = BracketsCheckBox.IsChecked ?? false;
         AutoSaveCheckBox.IsCheckedChanged += (s, e) => settings.AutoSave = AutoSaveCheckBox.IsChecked ?? false;
 
+        UseLocalClangFormatCheckBox.IsChecked = settings.UseLocalClangFormat;
+        UseLocalClangFormatCheckBox.IsCheckedChanged += (s, e) => settings.UseLocalClangFormat = UseLocalClangFormatCheckBox.IsChecked ?? false;
+
+        ClangFormatPathTextBox.Text = settings.ClangFormatPath;
+        ClangFormatPathTextBox.TextChanged += (s, e) => settings.ClangFormatPath = ClangFormatPathTextBox.Text ?? "";
+
         CloseButton.Click += (s, e) => Close();
     }
+
 }

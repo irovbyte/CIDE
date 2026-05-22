@@ -52,7 +52,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid Background="#1E1E1E">
+    <Grid Background="Transparent">
         <Grid RowDefinitions="*, Auto" Margin="40">
             
             <!-- Right Panel: Actions -->
@@ -60,10 +60,10 @@
                 <!-- Title -->
                 <StackPanel Classes="welcomeTitle" HorizontalAlignment="Center" Spacing="10" Opacity="0">
                     <StackPanel.RenderTransform><TranslateTransform/></StackPanel.RenderTransform>
-                    <TextBlock Text="CIDE" FontSize="64" FontWeight="Bold" Foreground="#CCCCCC" 
-                               HorizontalAlignment="Center" LetterSpacing="2"/>
+                    <TextBlock Text="CIDE" FontSize="48" FontWeight="Bold" Foreground="#3A3A42" 
+                               HorizontalAlignment="Center" LetterSpacing="4"/>
                     <TextBlock Text="Современная среда разработки для C/C++ и C#" 
-                               FontSize="16" Foreground="#858585" HorizontalAlignment="Center"/>
+                               FontSize="14" Foreground="#555562" HorizontalAlignment="Center"/>
                 </StackPanel>
 
                 <Grid ColumnDefinitions="320, 30, 320" HorizontalAlignment="Center">
