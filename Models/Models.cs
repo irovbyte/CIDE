@@ -71,6 +71,8 @@ public partial class EditorTab : ObservableObject
     [NotifyPropertyChangedFor(nameof(BackgroundBrush))]
     public partial bool IsActive { get; set; }
     public FileDisplayMode DisplayMode { get; init; } = FileDisplayMode.Text;
+    public bool IsBinary => DisplayMode == FileDisplayMode.Binary;
+    public bool IsText => DisplayMode == FileDisplayMode.Text;
     public string FileName => Path.GetFileName(FilePath);
     public string DisplayName => IsModified ? $"● {FileName}" : FileName;
     public string BackgroundBrush => IsActive ? "#1E1E1E" : "Transparent";

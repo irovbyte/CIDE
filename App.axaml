@@ -204,6 +204,29 @@
             <Setter Property="BorderBrush" Value="#7C3AED"/>
         </Style>
 
+        <!-- Global ScrollBar Style -->
+        <Style Selector="ScrollBar:vertical">
+            <Setter Property="Width" Value="8" />
+        </Style>
+        <Style Selector="ScrollBar:horizontal">
+            <Setter Property="Height" Value="8" />
+        </Style>
+        <Style Selector="ScrollBar Thumb">
+            <Setter Property="Background" Value="#40FFFFFF" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ScrollBar Thumb:pointerover">
+            <Setter Property="Background" Value="#80FFFFFF" />
+        </Style>
+        <Style Selector="ScrollViewer">
+            <Setter Property="AllowAutoHide" Value="True"/>
+        </Style>
+
         <!-- Panel entrance animation (fade + slide) -->
         <Style Selector="StackPanel.fadeIn">
             <Style.Animations>

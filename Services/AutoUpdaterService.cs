@@ -10,6 +10,8 @@ namespace CIDE.Services;
 
 public class GitHubRelease
 {
+    [JsonPropertyName("id")]
+    public long Id { get; set; }
     [JsonPropertyName("tag_name")]
     public string TagName { get; set; } = "";
     [JsonPropertyName("assets")]
@@ -39,9 +41,9 @@ public static class AutoUpdaterService
             onProgress("Проверка обновлений...");
             var release = await client.GetFromJsonAsync<GitHubRelease>(RepoUrl);
 
-            if (release != null && release.TagName != CurrentVersion)
+            if (release != null && release.Id != SettingsService.Instance.LastUpdateId)
             {
-                onProgress($"Найдена новая версия {release.TagName}! Скачивание...");
+                onProgress($"Найдена новая версия! Скачивание...");
                 var downloadUrl = "";
                 foreach (var asset in release.Assets)
                 {
@@ -92,6 +94,9 @@ public static class AutoUpdaterService
                         FileName = currentExe,
                         UseShellExecute = true
                     });
+                    
+                    SettingsService.Instance.LastUpdateId = release.Id;
+                    SettingsService.Instance.Save();
                     Environment.Exit(0);
                 }
             }

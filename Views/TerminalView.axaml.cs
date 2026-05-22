@@ -1,6 +1,8 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -16,16 +18,27 @@ public partial class TerminalView : UserControl, IDisposable
     private readonly StringBuilder _outputBuffer = new();
     private bool _isTerminalMode;
     private string _currentProfile = "powershell";
+
     public TerminalView()
     {
         InitializeComponent();
+        
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
         OutputToggle.IsCheckedChanged += OnOutputToggleChanged;
         TerminalToggle.IsCheckedChanged += OnTerminalToggleChanged;
         NewTerminalButton.Click += OnNewTerminalClick;
         TerminalInput.KeyDown += OnTerminalInputKeyDown;
         ProfileComboBox.SelectionChanged += OnProfileSelectionChanged;
         DetachedFromVisualTree += OnDetachedFromVisualTree;
+        
+        // Focus input on click in terminal panel
+        TerminalPanel.PointerPressed += (s, e) => {
+            if (_isTerminalMode)
+                TerminalInput.Focus();
+        };
     }
+
     private void OnOutputToggleChanged(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (OutputToggle.IsChecked == true)
@@ -61,23 +74,27 @@ public partial class TerminalView : UserControl, IDisposable
         _isTerminalMode = isTerminal;
         OutputToggle.IsChecked = !isTerminal;
         TerminalToggle.IsChecked = isTerminal;
+
         OutputToggle.Foreground = isTerminal
             ? new SolidColorBrush(Color.Parse("#858585"))
             : new SolidColorBrush(Color.Parse("#CCCCCC"));
         TerminalToggle.Foreground = isTerminal
             ? new SolidColorBrush(Color.Parse("#CCCCCC"))
             : new SolidColorBrush(Color.Parse("#858585"));
+
         OutputToggle.BorderThickness = isTerminal
             ? new Thickness(0)
-            : new Thickness(0, 0, 0, 2);
-        OutputToggle.BorderBrush = new SolidColorBrush(Color.Parse("#7C3AED"));
+            : new Thickness(0, 0, 0, 1);
+        OutputToggle.BorderBrush = new SolidColorBrush(Color.Parse("#007ACC"));
 
         TerminalToggle.BorderThickness = isTerminal
-            ? new Thickness(0, 0, 0, 2)
+            ? new Thickness(0, 0, 0, 1)
             : new Thickness(0);
-        TerminalToggle.BorderBrush = new SolidColorBrush(Color.Parse("#7C3AED"));
+        TerminalToggle.BorderBrush = new SolidColorBrush(Color.Parse("#007ACC"));
+
         OutputScrollViewer.IsVisible = !isTerminal;
         TerminalPanel.IsVisible = isTerminal;
+
         if (isTerminal && _shellProcess is null)
         {
             StartShell(_currentProfile);
@@ -87,12 +104,14 @@ public partial class TerminalView : UserControl, IDisposable
             Dispatcher.UIThread.Post(() => TerminalInput.Focus(), DispatcherPriority.Background);
         }
     }
+
     private void StartShell(string profile)
     {
         StopShell();
 
         _currentProfile = profile.ToLowerInvariant();
-        _ = _outputBuffer.Clear();
+        _outputBuffer.Clear();
+        TerminalOutput.Text = string.Empty;
 
         var (fileName, args, prompt) = _currentProfile switch
         {
@@ -105,6 +124,16 @@ public partial class TerminalView : UserControl, IDisposable
 
         try
         {
+            Encoding shellEncoding;
+            try 
+            {
+                shellEncoding = Encoding.GetEncoding(CultureInfo.CurrentCulture.TextInfo.OEMCodePage);
+            }
+            catch 
+            {
+                shellEncoding = Encoding.GetEncoding(866);
+            }
+
             _shellProcess = new Process
             {
                 StartInfo = new ProcessStartInfo
@@ -116,8 +145,8 @@ public partial class TerminalView : UserControl, IDisposable
                     RedirectStandardError = true,
                     CreateNoWindow = true,
                     UseShellExecute = false,
-                    StandardOutputEncoding = Encoding.UTF8,
-                    StandardErrorEncoding = Encoding.UTF8
+                    StandardOutputEncoding = shellEncoding,
+                    StandardErrorEncoding = shellEncoding
                 },
                 EnableRaisingEvents = true
             };
@@ -126,15 +155,15 @@ public partial class TerminalView : UserControl, IDisposable
             _shellProcess.ErrorDataReceived += OnShellErrorReceived;
             _shellProcess.Exited += OnShellExited;
 
-            _ = _shellProcess.Start();
+            _shellProcess.Start();
             _shellProcess.BeginOutputReadLine();
             _shellProcess.BeginErrorReadLine();
 
-            AppendOutput($"[{profile} запущен]\n");
+            AppendOutput($"[{profile} started]\n");
         }
         catch (Exception ex)
         {
-            AppendOutput($"[Ошибка запуска {profile}: {ex.Message}]\n");
+            AppendOutput($"[Error starting {profile}: {ex.Message}]\n");
             _shellProcess = null;
         }
     }
@@ -142,9 +171,7 @@ public partial class TerminalView : UserControl, IDisposable
     private void StopShell()
     {
         if (_shellProcess is null)
-        {
             return;
-        }
 
         try
         {
@@ -157,15 +184,14 @@ public partial class TerminalView : UserControl, IDisposable
                 _shellProcess.Kill(entireProcessTree: true);
             }
         }
-        catch
-        {
-        }
+        catch { }
         finally
         {
             _shellProcess.Dispose();
             _shellProcess = null;
         }
     }
+
     private void OnShellOutputReceived(object? sender, DataReceivedEventArgs e)
     {
         if (e.Data is not null)
@@ -182,16 +208,16 @@ public partial class TerminalView : UserControl, IDisposable
         }
     }
 
-    private void OnShellExited(object? sender, EventArgs e) => AppendOutput("\n[Процесс завершён]\n");
+    private void OnShellExited(object? sender, EventArgs e) => AppendOutput("\n[Process exited]\n");
 
     private void AppendOutput(string text)
     {
         Dispatcher.UIThread.Post(() =>
         {
-            _ = _outputBuffer.Append(text);
+            _outputBuffer.Append(text);
             if (_outputBuffer.Length > 60000)
             {
-                _ = _outputBuffer.Remove(0, _outputBuffer.Length - 50000);
+                _outputBuffer.Remove(0, _outputBuffer.Length - 50000);
             }
 
             TerminalOutput.Text = _outputBuffer.ToString();
@@ -203,7 +229,7 @@ public partial class TerminalView : UserControl, IDisposable
     {
         if (_shellProcess is null || _shellProcess.HasExited)
         {
-            AppendOutput("[Терминал не запущен. Перезапуск...]\n");
+            AppendOutput("[Terminal is not running. Restarting...]\n");
             StartShell(_currentProfile);
             return;
         }
@@ -215,9 +241,10 @@ public partial class TerminalView : UserControl, IDisposable
         }
         catch (Exception ex)
         {
-            AppendOutput($"[Ошибка отправки команды: {ex.Message}]\n");
+            AppendOutput($"[Error sending command: {ex.Message}]\n");
         }
     }
+
     private void OnTerminalInputKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
@@ -232,8 +259,6 @@ public partial class TerminalView : UserControl, IDisposable
 
     private void OnNewTerminalClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        _ = _outputBuffer.Clear();
-        TerminalOutput.Text = string.Empty;
         StartShell(_currentProfile);
         if (!_isTerminalMode)
         {
@@ -248,8 +273,6 @@ public partial class TerminalView : UserControl, IDisposable
             var profile = selected.ToLowerInvariant();
             if (profile != _currentProfile && _isTerminalMode)
             {
-                _ = _outputBuffer.Clear();
-                TerminalOutput.Text = string.Empty;
                 StartShell(profile);
             }
             else
@@ -258,29 +281,16 @@ public partial class TerminalView : UserControl, IDisposable
             }
         }
     }
+
     public void Dispose()
     {
-        if (_disposed)
-        {
-            return;
-        }
-        if (_shellProcess != null)
-        {
-            try
-            {
-                if (!_shellProcess.HasExited)
-                {
-                    _shellProcess.Kill(true);
-                }
-                _shellProcess.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Ошибка при завершении процесса: {ex.Message}");
-            }
-        }
+        if (_disposed) return;
+        
+        StopShell();
+        
         _disposed = true;
         GC.SuppressFinalize(this);
     }
+
     private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e) => StopShell();
 }

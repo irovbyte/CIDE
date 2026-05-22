@@ -27,8 +27,16 @@
             </ListBox.ItemTemplate>
             <ListBox.Styles>
                 <Style Selector="ListBoxItem">
-                    <Setter Property="Padding" Value="0,4"/>
+                    <Setter Property="Padding" Value="8,4"/>
                     <Setter Property="MinHeight" Value="24"/>
+                    <Setter Property="CornerRadius" Value="4"/>
+                    <Setter Property="Margin" Value="4,1"/>
+                    <Setter Property="Transitions">
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                            <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                        </Transitions>
+                    </Setter>
                 </Style>
             </ListBox.Styles>
         </ListBox>

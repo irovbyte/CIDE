@@ -14,6 +14,8 @@
                         Foreground="#CCCCCC" FontSize="14" Padding="8,4">
                     <TextBlock Text="⬅ Назад" />
                 </Button>
+                <!-- Settings Button -->
+                <Button Content="⚙️" FontSize="14" Padding="8,4" Background="Transparent" Foreground="#CCCCCC" VerticalAlignment="Center" ToolTip.Tip="Настройки" Command="{Binding OpenSettingsCommand}"/>
             </StackPanel>
             
             <StackPanel Orientation="Horizontal" Spacing="10" Grid.Column="2">

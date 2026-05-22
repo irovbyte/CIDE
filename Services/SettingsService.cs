@@ -18,6 +18,10 @@ public partial class SettingsService : ObservableObject
 
     [ObservableProperty]
     public partial bool AutoSave { get; set; } = true;
+    
+    [ObservableProperty]
+    public partial long LastUpdateId { get; set; } = 0;
+    
     public List<string> RecentWorkspaces { get; set; } = [];
 
     private SettingsService()

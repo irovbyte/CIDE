@@ -20,35 +20,12 @@
         <views:WelcomeView IsVisible="{Binding IsWelcomeState}" />
 
         <!-- IDE Workspace -->
-        <Grid IsVisible="{Binding IsWorkspaceOpen}" RowDefinitions="35, 40, *, 24">
-        
-            <!-- Custom Titlebar -->
-            <Grid Grid.Row="0" Background="#333333" ColumnDefinitions="Auto, *, Auto">
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" Margin="10,0,0,0">
-                    <!-- Icon -->
-                    <Image Source="avares://CIDE/Assets/cide_logo.png" Width="16" Height="16" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                    <!-- Menu placeholder / Settings button will be here later -->
-                    <Button Content="⚙️" FontSize="14" Padding="4" Background="Transparent" Foreground="#ECE9FC" VerticalAlignment="Center" ToolTip.Tip="Настройки" Command="{Binding OpenSettingsCommand}"/>
-                    <!-- Drag Area (Title) -->
-                    <TextBlock Text="CIDE" Foreground="#ECE9FC" FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0" IsHitTestVisible="False"/>
-                </StackPanel>
-
-                <!-- This is the area where user can drag the window -->
-                <Border Grid.Column="1" Background="Transparent" />
-
-                <!-- Window Control Buttons (Custom) -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                    <Button x:Name="MinimizeBtn" Content="—" Width="46" Height="35" Background="Transparent" Foreground="#ECE9FC" BorderThickness="0" CornerRadius="0"/>
-                    <Button x:Name="MaximizeBtn" Content="☐" Width="46" Height="35" Background="Transparent" Foreground="#ECE9FC" BorderThickness="0" CornerRadius="0"/>
-                    <Button x:Name="CloseBtn" Content="✕" Width="46" Height="35" Background="Transparent" Foreground="#ECE9FC" BorderThickness="0" CornerRadius="0"/>
-                </StackPanel>
-            </Grid>
-
-            <!-- Toolbar -->
-            <views:ToolbarView x:Name="ToolbarPanel" Grid.Row="1" />
+        <Grid IsVisible="{Binding IsWorkspaceOpen}" RowDefinitions="Auto, *, 24">
+            <!-- Toolbar (now includes Settings) -->
+            <views:ToolbarView x:Name="ToolbarPanel" Grid.Row="0" Margin="0,35,0,0"/>
 
             <!-- Main Area -->
-            <Grid Grid.Row="2" Margin="0" ColumnDefinitions="250, 4, *">
+            <Grid Grid.Row="1" Margin="0" ColumnDefinitions="250, 4, *">
                 <Border Grid.Column="0" Background="#252526">
                     <views:SidebarView x:Name="SidebarPanel" />
                 </Border>
@@ -67,7 +44,7 @@
             </Grid>
 
             <!-- Status Bar -->
-            <Border Grid.Row="3" Background="#7C3AED">
+            <Border Grid.Row="2" Background="#7C3AED">
                 <Grid ColumnDefinitions="Auto, Auto, *, Auto, Auto, Auto" Margin="14,0">
                     <Border Grid.Column="0" Background="#A78BFA" CornerRadius="2" Padding="6,0" VerticalAlignment="Center" Margin="0,2">
                         <TextBlock Text="{Binding SelectedBuildProfile}" Foreground="#1E1E1E" FontSize="10" FontWeight="Bold" />

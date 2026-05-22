@@ -17,6 +17,10 @@ public partial class EditorView : UserControl
     private TextMate.Installation? _textMateInstallation;
     private TextMate.Installation? _minimapTextMateInstallation;
 
+    private bool _isMinimapDragging;
+    private Avalonia.Point _minimapDragStartPoint;
+    private double _minimapDragStartOffset;
+
     public EditorView()
     {
         InitializeComponent();
@@ -152,6 +156,56 @@ public partial class EditorView : UserControl
         {
             vm.ActiveTab.Content = CodeEditor.Text;
             vm.ActiveTab.IsModified = true;
+        }
+    }
+
+    private void MinimapEditor_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(MinimapEditor).Properties.IsLeftButtonPressed)
+        {
+            _isMinimapDragging = true;
+            _minimapDragStartPoint = e.GetPosition(MinimapEditor);
+            
+            var mainSv = CodeEditor.FindDescendantOfType<ScrollViewer>();
+            if (mainSv != null)
+            {
+                _minimapDragStartOffset = mainSv.Offset.Y;
+            }
+            e.Handled = true;
+        }
+    }
+
+    private void MinimapEditor_PointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_isMinimapDragging)
+        {
+            var point = e.GetPosition(MinimapEditor);
+            var delta = point.Y - _minimapDragStartPoint.Y;
+
+            var mainSv = CodeEditor.FindDescendantOfType<ScrollViewer>();
+            var miniSv = MinimapEditor.FindDescendantOfType<ScrollViewer>();
+
+            if (mainSv != null && miniSv != null)
+            {
+                double scale = mainSv.Extent.Height / miniSv.Extent.Height;
+                if (double.IsNaN(scale) || double.IsInfinity(scale)) scale = 1;
+                
+                double newOffset = _minimapDragStartOffset + delta * scale;
+                // Clamp the offset to avoid scrolling out of bounds
+                newOffset = Math.Max(0, Math.Min(newOffset, mainSv.Extent.Height - mainSv.Viewport.Height));
+                
+                mainSv.Offset = new Avalonia.Vector(mainSv.Offset.X, newOffset);
+            }
+            e.Handled = true;
+        }
+    }
+
+    private void MinimapEditor_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_isMinimapDragging)
+        {
+            _isMinimapDragging = false;
+            e.Handled = true;
         }
     }
 }

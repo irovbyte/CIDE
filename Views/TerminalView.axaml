@@ -3,127 +3,141 @@
              xmlns:vm="clr-namespace:CIDE.PageModels"
              x:DataType="vm:MainPageModel"
              x:Class="CIDE.Views.TerminalView"
-             IsVisible="{Binding IsOutputVisible}"
              Height="200" MinHeight="100"
              Background="#1E1E1E">
 
     <Grid RowDefinitions="Auto,*">
-
         <!-- ═══════════ Header Bar ═══════════ -->
-        <Border Grid.Row="0" Background="#2D2D30" BorderBrush="#3E3E42" BorderThickness="0,1,0,1">
-            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Height="30">
+        <Border Grid.Row="0" Background="#1E1E1E" BorderThickness="0">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Height="30" Margin="10,0,10,0">
 
-                <!-- "ВЫВОД" toggle -->
-                <ToggleButton x:Name="OutputToggle"
-                              Grid.Column="0"
-                              Content="ВЫВОД"
-                              IsChecked="True"
+                <StackPanel Orientation="Horizontal" Spacing="16" Grid.Column="0">
+                    <ToggleButton x:Name="OutputToggle"
+                                  Content="OUTPUT"
+                                  IsChecked="True"
+                                  Background="Transparent"
+                                  Foreground="#CCCCCC"
+                                  FontSize="12"
+                                  FontFamily="Segoe UI, Inter"
+                                  BorderThickness="0,0,0,1"
+                                  BorderBrush="#007ACC"
+                                  Padding="0,6,0,4"
+                                  CornerRadius="0"
+                                  VerticalAlignment="Stretch" />
+
+                    <ToggleButton x:Name="TerminalToggle"
+                                  Content="TERMINAL"
+                                  IsChecked="False"
+                                  Background="Transparent"
+                                  Foreground="#858585"
+                                  FontSize="12"
+                                  FontFamily="Segoe UI, Inter"
+                                  BorderThickness="0"
+                                  Padding="0,6,0,4"
+                                  CornerRadius="0"
+                                  VerticalAlignment="Stretch" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="8" Grid.Column="3">
+                    <ComboBox x:Name="ProfileComboBox"
+                              ItemsSource="{Binding TerminalProfiles}"
+                              SelectedItem="{Binding SelectedTerminalProfile}"
                               Background="Transparent"
                               Foreground="#CCCCCC"
-                              FontSize="11"
-                              FontWeight="SemiBold"
+                              FontSize="12"
                               BorderThickness="0"
-                              Padding="12,0"
-                              CornerRadius="0"
-                              VerticalAlignment="Stretch" />
+                              MinWidth="120"
+                              MaxHeight="26"
+                              VerticalAlignment="Center">
+                        <ComboBox.Styles>
+                            <Style Selector="ComboBox:pointerover /template/ Border">
+                                <Setter Property="Background" Value="#2D2D30"/>
+                            </Style>
+                        </ComboBox.Styles>
+                    </ComboBox>
+                </StackPanel>
 
-                <!-- "ТЕРМИНАЛ" toggle -->
-                <ToggleButton x:Name="TerminalToggle"
-                              Grid.Column="1"
-                              Content="ТЕРМИНАЛ"
-                              IsChecked="False"
-                              Background="Transparent"
-                              Foreground="#858585"
-                              FontSize="11"
-                              FontWeight="SemiBold"
-                              BorderThickness="0"
-                              Padding="12,0"
-                              CornerRadius="0"
-                              VerticalAlignment="Stretch" />
-
-                <!-- Profile ComboBox -->
-                <ComboBox x:Name="ProfileComboBox"
-                          Grid.Column="3"
-                          ItemsSource="{Binding TerminalProfiles}"
-                          SelectedItem="{Binding SelectedTerminalProfile}"
-                          Background="#2D2D30"
-                          Foreground="#CCCCCC"
-                          FontSize="11"
-                          BorderThickness="0"
-                          MinWidth="110"
-                          MaxHeight="26"
-                          Margin="4,0"
-                          VerticalAlignment="Center" />
-
-                <!-- "+" new terminal button -->
                 <Button x:Name="NewTerminalButton"
                         Grid.Column="4"
-                        Content="＋"
+                        Content="+"
                         Background="Transparent"
                         Foreground="#CCCCCC"
-                        FontSize="14"
+                        FontSize="16"
+                        FontFamily="Consolas, Courier New, monospace"
                         BorderThickness="0"
-                        Padding="8,0"
+                        Padding="6,0"
                         VerticalAlignment="Center"
-                        Margin="0,0,6,0" />
+                        ToolTip.Tip="New Terminal" />
             </Grid>
         </Border>
 
         <!-- ═══════════ Content Area ═══════════ -->
+        <Border Grid.Row="1" BorderBrush="#3E3E42" BorderThickness="0,1,0,0">
+            <Grid>
+                <!-- OUTPUT mode panel -->
+                <ScrollViewer x:Name="OutputScrollViewer"
+                              IsVisible="True"
+                              Margin="10,10,10,10">
+                    <SelectableTextBlock Text="{Binding CompilerOutput}"
+                                         Foreground="#CCCCCC"
+                                         FontFamily="Consolas, Cascadia Code, monospace"
+                                         FontSize="13"
+                                         TextWrapping="Wrap" />
+                </ScrollViewer>
 
-        <!-- OUTPUT mode panel -->
-        <ScrollViewer x:Name="OutputScrollViewer"
-                      Grid.Row="1"
-                      IsVisible="True"
-                      Margin="10,4,10,10">
-            <SelectableTextBlock Text="{Binding CompilerOutput}"
+                <!-- TERMINAL mode panel -->
+                <Grid x:Name="TerminalPanel"
+                      RowDefinitions="*,Auto"
+                      IsVisible="False"
+                      Margin="10,10,10,10">
+
+                    <!-- Terminal output -->
+                    <ScrollViewer x:Name="TerminalScrollViewer"
+                                  Grid.Row="0">
+                        <SelectableTextBlock x:Name="TerminalOutput"
+                                             Foreground="#CCCCCC"
+                                             FontFamily="Consolas, Cascadia Code, monospace"
+                                             FontSize="13"
+                                             TextWrapping="Wrap" />
+                    </ScrollViewer>
+
+                    <!-- Terminal input row -->
+                    <Grid Grid.Row="1"
+                          ColumnDefinitions="Auto,*">
+
+                        <TextBlock x:Name="PromptLabel"
+                                   Text="PS>"
+                                   Foreground="#00FF00"
+                                   FontFamily="Consolas, Cascadia Code, monospace"
+                                   FontSize="13"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+
+                        <TextBox x:Name="TerminalInput"
+                                 Grid.Column="1"
+                                 Background="Transparent"
                                  Foreground="#CCCCCC"
-                                 FontFamily="Consolas"
+                                 FontFamily="Consolas, Cascadia Code, monospace"
                                  FontSize="13"
-                                 TextWrapping="Wrap" />
-        </ScrollViewer>
-
-        <!-- TERMINAL mode panel -->
-        <Grid x:Name="TerminalPanel"
-              Grid.Row="1"
-              RowDefinitions="*,Auto"
-              IsVisible="False">
-
-            <!-- Terminal output -->
-            <ScrollViewer x:Name="TerminalScrollViewer"
-                          Grid.Row="0"
-                          Margin="10,4,10,0">
-                <TextBlock x:Name="TerminalOutput"
-                           Foreground="#CCCCCC"
-                           FontFamily="Consolas"
-                           FontSize="13"
-                           TextWrapping="Wrap" />
-            </ScrollViewer>
-
-            <!-- Terminal input row -->
-            <Grid Grid.Row="1"
-                  ColumnDefinitions="Auto,*"
-                  Margin="10,2,10,6">
-
-                <TextBlock x:Name="PromptLabel"
-                           Text="PS>"
-                           Foreground="#7C3AED"
-                           FontFamily="Consolas"
-                           FontSize="13"
-                           FontWeight="Bold"
-                           VerticalAlignment="Center"
-                           Margin="0,0,6,0" />
-
-                <TextBox x:Name="TerminalInput"
-                         Grid.Column="1"
-                         Background="#1E1E1E"
-                         Foreground="#CCCCCC"
-                         FontFamily="Consolas"
-                         FontSize="13"
-                         BorderThickness="0"
-                         Padding="4,2"
-                         VerticalAlignment="Center" />
+                                 BorderThickness="0"
+                                 Padding="0"
+                                 MinHeight="18"
+                                 CaretBrush="#CCCCCC"
+                                 VerticalAlignment="Center">
+                            <TextBox.Styles>
+                                <Style Selector="TextBox:focus /template/ Border">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                </Style>
+                                <Style Selector="TextBox:pointerover /template/ Border">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                </Style>
+                            </TextBox.Styles>
+                        </TextBox>
+                    </Grid>
+                </Grid>
             </Grid>
-        </Grid>
+        </Border>
     </Grid>
 </UserControl>
