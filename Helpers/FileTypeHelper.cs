@@ -1,7 +1,6 @@
 using System.Text;
 
 namespace CIDE.Helpers;
-
 public enum FileDisplayMode
 {
     Text,
@@ -31,7 +30,6 @@ public static class FileTypeHelper
     public static FileDisplayMode GetDisplayMode(string filePath)
     {
         var ext = Path.GetExtension(filePath);
-
         return ext switch
         {
             _ when t_executableExtensions.Contains(ext) => FileDisplayMode.Executable,
@@ -43,7 +41,6 @@ public static class FileTypeHelper
     {
         var name = Path.GetFileName(filePath).ToLowerInvariant();
         var ext = Path.GetExtension(filePath).ToLowerInvariant();
-
         return (ext, name) switch
         {
             (_, "makefile" or "gnumakefile") => "makefile",
@@ -133,7 +130,6 @@ public static class FileTypeHelper
     {
         var nullBytes = 0;
         var controlBytes = 0;
-
         foreach (var b in buf.AsSpan(0, len))
         {
             if (b == 0x00)
@@ -145,7 +141,6 @@ public static class FileTypeHelper
                 controlBytes++;
             }
         }
-
         return (nullBytes > 0 && nullBytes * 100 / len >= 1) ||
                (controlBytes * 100 / len >= 10);
     }

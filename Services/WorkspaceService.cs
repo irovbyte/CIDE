@@ -1,101 +1,97 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using CIDE.Models;
-using Window = Microsoft.UI.Xaml.Window;
 
 namespace CIDE.Services;
 
 public static class WorkspaceService
 {
-    public static ObservableCollection<RecentEntry> Recents { get; } = [];
+    private static IStorageProvider? GetStorageProvider() =>
+        Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } window }
+            ? TopLevel.GetTopLevel(window)?.StorageProvider
+            : null;
 
-    private static readonly string t_recentsFile = Path.Combine(FileSystem.AppDataDirectory, "recents.json");
-    private static IntPtr GetParentWindowHandle()
-    {
-        if (Application.Current is not App app)
-        {
-            return IntPtr.Zero;
-        }
-        var platformView = app.Windows.Count > 0 ? app.Windows[0]?.Handler?.PlatformView : null;
-        return platformView is Window window
-            ? WinRT.Interop.WindowNative.GetWindowHandle(window)
-            : IntPtr.Zero;
-    }
     public static async Task<string?> PickFolderAsync()
     {
-        var path = await MainThread.InvokeOnMainThreadAsync(() => Win32FileDialog.ShowFolderPicker(GetParentWindowHandle()));
-        if (!string.IsNullOrEmpty(path))
+        var provider = GetStorageProvider();
+        if (provider == null)
         {
-            await AddRecentAsync(path, "folder");
-            return path;
+            return null;
         }
-        return null;
+
+        var result = await Dispatcher.UIThread.InvokeAsync(() => provider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Выберите папку проекта",
+            AllowMultiple = false
+        }));
+
+        return result?.Count > 0 ? result[0].Path.LocalPath : null;
     }
+
     public static async Task<string?> PickSolutionAsync()
     {
-        var path = await MainThread.InvokeOnMainThreadAsync(() => Win32FileDialog.ShowFilePicker(GetParentWindowHandle(), "Выберите решение", "Файлы решений (*.sln, *.slnx)", "*.sln;*.slnx"));
-        if (!string.IsNullOrEmpty(path))
+        var provider = GetStorageProvider();
+        if (provider == null)
         {
-            await AddRecentAsync(path, "solution");
-            return Path.GetDirectoryName(path);
+            return null;
+        }
+
+        var result = await Dispatcher.UIThread.InvokeAsync(() => provider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Выберите решение",
+            AllowMultiple = false,
+            FileTypeFilter = [
+                new FilePickerFileType("Файлы решений")
+                {
+                    Patterns = [ "*.sln", "*.slnx" ]
+                }
+            ]
+        }));
+
+        if (result != null && result.Count > 0)
+        {
+            var path = result[0].Path.LocalPath;
+            return path != null ? Path.GetDirectoryName(path) : null;
         }
         return null;
     }
 
-    public static async Task<string> ReadFileAsync(string path) => await File.ReadAllTextAsync(path);
-    public static async Task SaveFileAsync(string path, string content) => await File.WriteAllTextAsync(path, content);
+    public static IFileSystemProvider CurrentProvider { get; set; } = new LocalFileSystemProvider();
 
-    public static void LoadRecents()
-    {
-        if (File.Exists(t_recentsFile))
-        {
-            var list = JsonSerializer.Deserialize(File.ReadAllText(t_recentsFile), CideJsonContext.Default.ListRecentEntry);
-            if (list != null)
-            {
-                foreach (var r in list)
-                {
-                    Recents.Add(r);
-                }
-            }
-        }
-    }
-    private static async Task AddRecentAsync(string path, string type)
-    {
-        var existing = Recents.FirstOrDefault(r => r.Path == path);
-        if (existing is not null)
-        {
-            _ = Recents.Remove(existing);
-        }
-        Recents.Insert(0, new RecentEntry { Path = path, Type = type, LastOpened = DateTime.Now });
-        var json = JsonSerializer.Serialize([.. Recents], CideJsonContext.Default.ListRecentEntry);
-        await File.WriteAllTextAsync(t_recentsFile, json);
-    }
+    public static async Task<string> ReadFileAsync(string path) => await CurrentProvider.ReadFileAsync(path);
+    public static async Task SaveFileAsync(string path, string content) => await CurrentProvider.SaveFileAsync(path, content);
 
-    public static FileNode BuildFolderTree(string rootPath)
+    public static async Task<FileNode> BuildFolderTreeAsync(string rootPath)
     {
         var root = new FileNode { Name = Path.GetFileName(rootPath), FullPath = rootPath, Kind = FileNodeKind.Folder, IsExpanded = true, Depth = 0, IsPopulated = true };
-        FillChildren(root, new DirectoryInfo(rootPath), 1);
+        await FillChildrenAsync(root, rootPath, 1);
         return root;
     }
 
-    public static void FillChildren(FileNode parent, DirectoryInfo dir, int depth)
+    public static async Task FillChildrenAsync(FileNode parent, string dirPath, int depth)
     {
-        if (!dir.Exists)
+        if (!await CurrentProvider.DirectoryExistsAsync(dirPath))
         {
             return;
         }
 
         parent.Children.Clear();
-        foreach (var sub in dir.GetDirectories().Where(d => !d.Name.StartsWith('.') && d.Name != "bin" && d.Name != "obj").OrderBy(d => d.Name))
+        var dirs = await CurrentProvider.GetDirectoriesAsync(dirPath);
+        foreach (var sub in dirs)
         {
-            var node = new FileNode { Name = sub.Name, FullPath = sub.FullName, Kind = FileNodeKind.Folder, Depth = depth, IsPopulated = false };
+            var node = new FileNode { Name = sub.Name, FullPath = sub.FullPath, Kind = FileNodeKind.Folder, Depth = depth, IsPopulated = false };
             node.Children.Add(new FileNode { Name = "dummy", Kind = FileNodeKind.File });
             parent.Children.Add(node);
         }
 
-        foreach (var f in dir.GetFiles().OrderBy(f => f.Name))
+        var files = await CurrentProvider.GetFilesAsync(dirPath);
+        foreach (var f in files)
         {
-            parent.Children.Add(new FileNode { Name = f.Name, FullPath = f.FullName, Kind = FileNodeKind.File, Depth = depth });
+            parent.Children.Add(new FileNode { Name = f.Name, FullPath = f.FullPath, Kind = FileNodeKind.File, Depth = depth });
         }
 
         parent.IsPopulated = true;

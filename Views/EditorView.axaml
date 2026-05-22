@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:CIDE.PageModels"
+             xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+             x:DataType="vm:MainPageModel"
+             x:Class="CIDE.Views.EditorView"
+             Background="#1E1E1E">
+
+    <Grid>
+        <!-- Заглушка, когда нет открытых вкладок -->
+        <Border Background="#1E1E1E" IsVisible="{Binding !IsEditorVisible}">
+            <TextBlock Text="C I D E" HorizontalAlignment="Center" VerticalAlignment="Center" 
+                       Foreground="#858585" FontSize="48" FontWeight="Bold" Opacity="0.5" />
+        </Border>
+
+        <!-- Сам редактор и Миникарта -->
+        <Grid IsVisible="{Binding IsEditorVisible}" ColumnDefinitions="*, Auto">
+            
+            <AvaloniaEdit:TextEditor x:Name="CodeEditor" 
+                                     Grid.Column="0"
+                                     Background="#1E1E1E"
+                                     Foreground="#ECE9FC"
+                                     FontFamily="Consolas"
+                                     FontSize="14"
+                                     ShowLineNumbers="True"
+                                     WordWrap="False"
+                                     TextChanged="CodeEditor_TextChanged">
+            </AvaloniaEdit:TextEditor>
+
+            <!-- Миникарта -->
+            <Border Grid.Column="1" 
+                    Width="100" 
+                    BorderBrush="#333333" 
+                    BorderThickness="1,0,0,0" 
+                    IsVisible="{Binding Settings.ShowMinimap}">
+                <AvaloniaEdit:TextEditor x:Name="MinimapEditor"
+                                         Background="#1E1E1E"
+                                         Foreground="#858585"
+                                         FontFamily="Consolas"
+                                         FontSize="3"
+                                         ShowLineNumbers="False"
+                                         WordWrap="False"
+                                         IsReadOnly="True"
+                                         HorizontalScrollBarVisibility="Hidden"
+                                         VerticalScrollBarVisibility="Hidden"/>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

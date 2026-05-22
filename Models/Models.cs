@@ -1,9 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.Maui;
 namespace CIDE.Models;
-
 public enum FileNodeKind { Solution, Project, Folder, File }
 public partial class FileNode : ObservableObject
 {
@@ -15,7 +13,6 @@ public partial class FileNode : ObservableObject
     public partial bool IsExpanded { get; set; }
     public bool IsPopulated { get; set; }
     public int Depth { get; set; }
-    public Thickness TreeMargin => new(Depth * 15, 0, 0, 0);
     public string Glyph => Kind switch
     {
         FileNodeKind.Solution => "\uE810",
@@ -77,17 +74,4 @@ public partial class EditorTab : ObservableObject
     public string FileName => Path.GetFileName(FilePath);
     public string DisplayName => IsModified ? $"● {FileName}" : FileName;
     public string BackgroundBrush => IsActive ? "#1E1E1E" : "Transparent";
-}
-public class RecentEntry
-{
-    public string Path { get; set; } = "";
-    public string Type { get; set; } = "folder";
-    public DateTime LastOpened { get; set; } = DateTime.Now;
-    public string Name => System.IO.Path.GetFileName(Path.TrimEnd('\\', '/'));
-    public string Icon => Type == "solution" ? "⬡" : "▸";
-}
-[JsonSerializable(typeof(List<RecentEntry>))]
-[JsonSerializable(typeof(string))]
-internal sealed partial class CideJsonContext : JsonSerializerContext
-{
 }

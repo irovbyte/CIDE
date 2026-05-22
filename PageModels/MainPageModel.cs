@@ -1,12 +1,35 @@
 namespace CIDE.PageModels;
 
-[QueryProperty(nameof(WorkspacePath), "path")]
+public enum AppState
+{
+    Loading,
+    Welcome,
+    Editor
+}
+
 public sealed partial class MainPageModel : ObservableObject
 {
+    [ObservableProperty]
+    public partial AppState CurrentState { get; set; } = AppState.Loading;
+
+    public bool IsLoadingState => CurrentState == AppState.Loading;
+    public bool IsWelcomeState => CurrentState == AppState.Welcome;
+    public bool IsWorkspaceOpen => CurrentState == AppState.Editor;
+
+    partial void OnCurrentStateChanged(AppState value)
+    {
+        OnPropertyChanged(nameof(IsLoadingState));
+        OnPropertyChanged(nameof(IsWelcomeState));
+        OnPropertyChanged(nameof(IsWorkspaceOpen));
+    }
+
     [ObservableProperty]
     public partial ObservableCollection<FileNode> FlatTree { get; set; } = [];
     [ObservableProperty]
     public partial ObservableCollection<EditorTab> Tabs { get; set; } = [];
+
+    public static SettingsService Settings => SettingsService.Instance;
+
     [ObservableProperty]
     public partial EditorTab? ActiveTab { get; set; }
     [ObservableProperty]
@@ -26,8 +49,6 @@ public sealed partial class MainPageModel : ObservableObject
     [ObservableProperty]
     public partial string Breadcrumbs { get; set; } = "";
     [ObservableProperty]
-    public partial bool IsAutoSaveEnabled { get; set; } = true;
-    [ObservableProperty]
     public partial ObservableCollection<string> TerminalProfiles { get; set; } = [];
     [ObservableProperty]
     public partial string SelectedTerminalProfile { get; set; } = "";
@@ -36,31 +57,89 @@ public sealed partial class MainPageModel : ObservableObject
     [ObservableProperty]
     public partial string? SelectedBuildTarget { get; set; }
 
+    [ObservableProperty]
+    public partial ObservableCollection<string> RecentWorkspaces { get; set; } = [];
+
     private FileNode? _rootNode;
-    private string? _workspacePath { get; set; }
+#pragma warning disable IDE0032
+    private string? _workspacePath;
+#pragma warning restore IDE0032
+
     public event Action<string, string, FileDisplayMode>? FileOpened;
     public event Func<Task>? FileSaving;
+
+    public MainPageModel()
+    {
+        foreach (var rw in Settings.RecentWorkspaces)
+        {
+            RecentWorkspaces.Add(rw);
+        }
+        _ = CheckToolchainAsync();
+    }
+
+    private async Task CheckToolchainAsync()
+    {
+        await AutoUpdaterService.CheckForUpdatesAsync(msg => Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = msg));
+        await ToolchainService.InstallMinGWAsync(msg => Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = msg));
+        if (CurrentState == AppState.Loading)
+        {
+            if (Program.StartupArgs.Length > 0 && Directory.Exists(Program.StartupArgs[0]))
+            {
+                WorkspacePath = Path.GetFullPath(Program.StartupArgs[0]);
+            }
+            else
+            {
+                CurrentState = AppState.Welcome;
+            }
+        }
+    }
+
     public string? WorkspacePath
     {
         get => _workspacePath;
         set
         {
-            _workspacePath = value;
-            if (!string.IsNullOrEmpty(value))
+            if (SetProperty(ref _workspacePath, value))
             {
-                LoadWorkspace(value);
+                if (!string.IsNullOrEmpty(value))
+                {
+                    CurrentState = AppState.Editor;
+                    OnPropertyChanged(nameof(IsWorkspaceOpen));
+                    _ = Settings.RecentWorkspaces.Remove(value);
+                    Settings.RecentWorkspaces.Insert(0, value);
+                    if (Settings.RecentWorkspaces.Count > 10)
+                    {
+                        Settings.RecentWorkspaces.RemoveAt(Settings.RecentWorkspaces.Count - 1);
+                    }
+                    Settings.Save();
+
+                    _ = LoadWorkspaceAsync(value);
+                }
+                else
+                {
+                    CurrentState = AppState.Welcome;
+                    OnPropertyChanged(nameof(IsWorkspaceOpen));
+                }
             }
         }
     }
 
-    private void LoadWorkspace(string path)
+    private async Task LoadWorkspaceAsync(string path)
     {
-        _rootNode = WorkspaceService.BuildFolderTree(path);
-        ExplorerTitle = Path.GetFileName(path).ToUpperInvariant();
-        RebuildFlatTree();
-        StatusText = $"Открыт: {ExplorerTitle}";
-        DetectTerminals();
-        UpdateBuildProfilesAndTargets(path);
+        try
+        {
+            var root = await WorkspaceService.BuildFolderTreeAsync(path);
+            _rootNode = root;
+            ExplorerTitle = Path.GetFileName(path).ToUpperInvariant();
+            RebuildFlatTree();
+            StatusText = $"Открыт: {ExplorerTitle}";
+            DetectTerminals();
+            UpdateBuildProfilesAndTargets(path);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Ошибка загрузки рабочей области: {ex.Message}";
+        }
     }
 
     private void RebuildFlatTree()
@@ -83,6 +162,179 @@ public sealed partial class MainPageModel : ObservableObject
             }
         }
     }
+
+    [RelayCommand]
+    private void OpenRecentWorkspace(string path)
+    {
+        if (Directory.Exists(path) || File.Exists(path))
+        {
+            WorkspacePath = path;
+        }
+        else
+        {
+            StatusText = $"Путь не найден: {path}";
+            _ = Settings.RecentWorkspaces.Remove(path);
+            _ = RecentWorkspaces.Remove(path);
+            Settings.Save();
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenFolderAsync()
+    {
+        var path = await WorkspaceService.PickFolderAsync();
+        if (!string.IsNullOrEmpty(path))
+        {
+            WorkspacePath = path;
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenSolutionAsync()
+    {
+        var path = await WorkspaceService.PickSolutionAsync();
+        if (!string.IsNullOrEmpty(path))
+        {
+            WorkspacePath = path;
+        }
+    }
+
+    [RelayCommand]
+    private async Task CreateCppProjectAsync()
+    {
+        if (CurrentState == AppState.Loading)
+        {
+            return;
+        }
+        var desktop = Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
+        if (desktop?.MainWindow == null)
+        {
+            return;
+        }
+
+        var dialog = new Views.CreateCppProjectDialog();
+        var result = await dialog.ShowDialog<Views.CppProjectResult>(desktop.MainWindow);
+
+        if (result != null)
+        {
+            try
+            {
+                _ = Directory.CreateDirectory(result.FullPath);
+                var srcPath = Path.Combine(result.FullPath, "src");
+                _ = Directory.CreateDirectory(srcPath);
+                var mainFile = result.IsCpp ? "main.cpp" : "main.c";
+                var mainContent = result.IsCpp
+                    ? "#include <iostream>\n\nint main() {\n    std::cout << \"Hello, CIDE!\" << std::endl;\n    return 0;\n}\n"
+                    : "#include <stdio.h>\n\nint main() {\n    printf(\"Hello, CIDE!\\n\");\n    return 0;\n}\n";
+                await File.WriteAllTextAsync(Path.Combine(srcPath, mainFile), mainContent);
+                var compiler = result.IsCpp ? "g++" : "gcc";
+                var makefileContent = $"CC={compiler}\nCFLAGS=-Wall\n\nall: run\n\nbuild:\n\t$(CC) $(CFLAGS) src/{mainFile} -o bin/{result.Name}\n\nrun: build\n\t./bin/{result.Name}\n";
+                await File.WriteAllTextAsync(Path.Combine(result.FullPath, "Makefile"), makefileContent);
+                _ = Directory.CreateDirectory(Path.Combine(result.FullPath, "bin"));
+                WorkspacePath = result.FullPath;
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Ошибка создания проекта: {ex.Message}";
+            }
+        }
+    }
+
+    [RelayCommand]
+    private async Task CreateCsharpProjectAsync()
+    {
+        if (CurrentState == AppState.Loading)
+        {
+            return;
+        }
+        var desktop = Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
+        if (desktop?.MainWindow == null)
+        {
+            return;
+        }
+
+        var dialog = new Views.CreateCsharpProjectDialog();
+        var result = await dialog.ShowDialog<Views.CsharpProjectResult>(desktop.MainWindow);
+
+        if (result != null)
+        {
+            try
+            {
+                StatusText = "Создание проекта C#...";
+                var slnDir = Path.Combine(result.BasePath, result.SolutionName);
+                if (!result.SameFolder)
+                {
+                    _ = Directory.CreateDirectory(slnDir);
+                }
+                else
+                {
+                    slnDir = Path.Combine(result.BasePath, result.ProjectName);
+                    _ = Directory.CreateDirectory(slnDir);
+                }
+
+                var tcs = new TaskCompletionSource();
+                var processArgs = result.SameFolder
+                    ? $"new {result.TemplateShortName} -n {result.ProjectName} -o \"{slnDir}\""
+                    : $"new {result.TemplateShortName} -n {result.ProjectName} -o \"{Path.Combine(slnDir, result.ProjectName)}\"";
+
+                var createProcess = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "dotnet",
+                        Arguments = processArgs,
+                        WorkingDirectory = result.BasePath,
+                        CreateNoWindow = true
+                    },
+                    EnableRaisingEvents = true
+                };
+
+                createProcess.Exited += (s, e) => tcs.SetResult();
+                _ = createProcess.Start();
+                await tcs.Task;
+                if (!result.SameFolder)
+                {
+                    var slnTcs = new TaskCompletionSource();
+                    var slnProcess = new System.Diagnostics.Process
+                    {
+                        StartInfo = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "dotnet",
+                            Arguments = $"new sln -n {result.SolutionName} -f slnx",
+                            WorkingDirectory = slnDir,
+                            CreateNoWindow = true
+                        },
+                        EnableRaisingEvents = true
+                    };
+                    slnProcess.Exited += (s, e) => slnTcs.SetResult();
+                    _ = slnProcess.Start();
+                    await slnTcs.Task;
+
+                    var addTcs = new TaskCompletionSource();
+                    var addProcess = new System.Diagnostics.Process
+                    {
+                        StartInfo = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "dotnet",
+                            Arguments = $"sln add \"{Path.Combine(result.ProjectName, result.ProjectName + ".csproj")}\"",
+                            WorkingDirectory = slnDir,
+                            CreateNoWindow = true
+                        },
+                        EnableRaisingEvents = true
+                    };
+                    addProcess.Exited += (s, e) => addTcs.SetResult();
+                    _ = addProcess.Start();
+                    await addTcs.Task;
+                }
+                WorkspacePath = slnDir;
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Ошибка: {ex.Message}";
+            }
+        }
+    }
+
     [RelayCommand]
     private async Task SelectNodeAsync(FileNode? node)
     {
@@ -105,7 +357,7 @@ public sealed partial class MainPageModel : ObservableObject
     {
         if (!node.IsPopulated)
         {
-            await Task.Run(() => WorkspaceService.FillChildren(node, new DirectoryInfo(node.FullPath), node.Depth + 1));
+            await WorkspaceService.FillChildrenAsync(node, node.FullPath, node.Depth + 1);
         }
         node.IsExpanded = !node.IsExpanded;
         var index = FlatTree.IndexOf(node);
@@ -200,7 +452,7 @@ public sealed partial class MainPageModel : ObservableObject
         if (ActiveTab != null && FileSaving != null)
         {
             await FileSaving.Invoke();
-            if (IsAutoSaveEnabled && ActiveTab.IsModified)
+            if (Settings.AutoSave && ActiveTab.IsModified)
             {
                 await WorkspaceService.SaveFileAsync(ActiveTab.FilePath, ActiveTab.Content);
                 ActiveTab.IsModified = false;
@@ -262,12 +514,7 @@ public sealed partial class MainPageModel : ObservableObject
         StatusText = "✅ Сохранено";
     }
     [RelayCommand]
-    internal async Task GoBackAsync()
-    {
-        _ = IsOutputVisible;
-        await Shell.Current.GoToAsync("//WelcomePage");
-    }
-
+    internal static Task GoBackAsync() => Task.CompletedTask;
     [RelayCommand]
     internal void ToggleOutput() => IsOutputVisible = !IsOutputVisible;
     [RelayCommand]
@@ -280,7 +527,7 @@ public sealed partial class MainPageModel : ObservableObject
             SelectedBuildProfile,
             ActiveTab?.FilePath ?? "",
             WorkspacePath ?? "",
-            output => MainThread.BeginInvokeOnMainThread(() => CompilerOutput += output));
+            output => Avalonia.Threading.Dispatcher.UIThread.Post(() => CompilerOutput += output));
     }
 
     [RelayCommand]
@@ -337,4 +584,19 @@ public sealed partial class MainPageModel : ObservableObject
             SelectedBuildTarget = BuildTargets[0];
         }
     }
+
+#pragma warning disable CA1822
+    [RelayCommand]
+    private async Task OpenSettingsAsync()
+    {
+        var desktop = Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
+        if (desktop?.MainWindow == null)
+        {
+            return;
+        }
+
+        var dialog = new Views.SettingsDialog();
+        await dialog.ShowDialog(desktop.MainWindow);
+    }
+#pragma warning restore CA1822
 }

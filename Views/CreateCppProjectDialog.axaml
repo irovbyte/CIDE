@@ -1,0 +1,47 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CIDE.Views.CreateCppProjectDialog"
+        Title="Создание C/C++ проекта"
+        Width="500" Height="380"
+        WindowStartupLocation="CenterOwner"
+        Background="#0A0714"
+        CanResize="False"
+        ExtendClientAreaToDecorationsHint="True">
+
+    <Grid RowDefinitions="40, *, 60" Margin="20">
+        <!-- Заголовок -->
+        <TextBlock Grid.Row="0" Text="Новый проект C / C++" FontSize="20" FontWeight="Bold" Foreground="#ECE9FC" VerticalAlignment="Center"/>
+
+        <!-- Форма -->
+        <StackPanel Grid.Row="1" Spacing="15" Margin="0,20,0,0">
+            
+            <StackPanel Spacing="5">
+                <TextBlock Text="Название проекта" Foreground="#858585" FontSize="12"/>
+                <TextBox x:Name="ProjectNameTextBox" Text="MyProject" Background="#06040A" Foreground="#ECE9FC" BorderBrush="#1D153A"/>
+            </StackPanel>
+
+            <StackPanel Spacing="5">
+                <TextBlock Text="Путь" Foreground="#858585" FontSize="12"/>
+                <Grid ColumnDefinitions="*, 80">
+                    <TextBox x:Name="ProjectPathTextBox" Grid.Column="0" Background="#06040A" Foreground="#ECE9FC" BorderBrush="#1D153A" Margin="0,0,10,0"/>
+                    <Button x:Name="BrowseButton" Grid.Column="1" Content="Обзор..." HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#1D153A" Foreground="#ECE9FC"/>
+                </Grid>
+            </StackPanel>
+
+            <StackPanel Spacing="5">
+                <TextBlock Text="Язык" Foreground="#858585" FontSize="12"/>
+                <ComboBox x:Name="LanguageComboBox" SelectedIndex="1" HorizontalAlignment="Stretch" Background="#06040A" Foreground="#ECE9FC" BorderBrush="#1D153A">
+                    <ComboBoxItem Content="C (gcc)"/>
+                    <ComboBoxItem Content="C++ (g++)"/>
+                </ComboBox>
+            </StackPanel>
+            
+        </StackPanel>
+
+        <!-- Кнопки -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" VerticalAlignment="Bottom">
+            <Button x:Name="CancelButton" Content="Отмена" Width="100" HorizontalContentAlignment="Center" Background="Transparent" Foreground="#858585" BorderBrush="#1D153A"/>
+            <Button x:Name="CreateButton" Content="Создать" Width="100" HorizontalContentAlignment="Center" Background="#7C3AED" Foreground="White" FontWeight="Bold"/>
+        </StackPanel>
+    </Grid>
+</Window>

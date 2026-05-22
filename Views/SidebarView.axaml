@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:CIDE.PageModels"
+             xmlns:models="clr-namespace:CIDE.Models"
+             xmlns:helpers="clr-namespace:CIDE.Helpers"
+             x:DataType="vm:MainPageModel"
+             x:Class="CIDE.Views.SidebarView"
+             Background="#252526">
+
+    <UserControl.Resources>
+        <helpers:DepthToMarginConverter x:Key="DepthToMarginConverter" />
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto, *">
+        <TextBlock Text="ОБОЗРЕВАТЕЛЬ" FontSize="11" FontWeight="Bold" Foreground="#858585" Margin="15,15,15,10" />
+
+        <ListBox Grid.Row="1" ItemsSource="{Binding FlatTree}" Background="Transparent" BorderThickness="0">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="models:FileNode">
+                    <StackPanel Orientation="Horizontal" Spacing="6" Background="Transparent" 
+                                PointerPressed="FileNode_PointerPressed" Margin="{Binding Depth, Converter={StaticResource DepthToMarginConverter}}">
+                        <TextBlock Text="{Binding Glyph}" Foreground="{Binding GlyphColor}" FontFamily="Segoe Fluent Icons" VerticalAlignment="Center" FontSize="12" />
+                        <TextBlock Text="{Binding IconText}" Foreground="{Binding IconColor}" FontFamily="Segoe Fluent Icons" VerticalAlignment="Center" FontSize="14" />
+                        <TextBlock Text="{Binding Name}" Foreground="#CCCCCC" FontSize="13" VerticalAlignment="Center" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+            <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                    <Setter Property="Padding" Value="0,4"/>
+                    <Setter Property="MinHeight" Value="24"/>
+                </Style>
+            </ListBox.Styles>
+        </ListBox>
+    </Grid>
+</UserControl>

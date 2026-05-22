@@ -6,11 +6,8 @@ global using System.Threading.Tasks;
 global using CIDE.Helpers;
 global using CIDE.Models;
 global using CIDE.PageModels;
-global using CIDE.Pages;
 global using CIDE.Services;
 global using CommunityToolkit.Mvvm.ComponentModel;
 global using CommunityToolkit.Mvvm.Input;
-global using Microsoft.Maui;
-global using Microsoft.Maui.Controls;
-global using Microsoft.Maui.Hosting;
-[assembly: System.Runtime.Versioning.SupportedOSPlatform("windows10.0.22000.0")]
+global using Avalonia;
+global using Avalonia.Controls;

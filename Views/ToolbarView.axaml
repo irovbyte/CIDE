@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:CIDE.PageModels"
+             x:DataType="vm:MainPageModel"
+             x:Class="CIDE.Views.ToolbarView"
+             Height="50" Background="#2D2D30">
+
+    <Border BorderBrush="#3E3E42" BorderThickness="0,0,0,1">
+        <Grid ColumnDefinitions="Auto, *, Auto" Margin="15,0">
+            <!-- В Avalonia DataTrigger заменяется либо на Binding свойств, либо на классы. Сделаем простой биндинг -->
+            <StackPanel Orientation="Horizontal" Spacing="10" Grid.Column="0">
+                <Button Command="{Binding GoBackCommand}" 
+                        Background="Transparent" BorderThickness="0"
+                        Foreground="#CCCCCC" FontSize="14" Padding="8,4">
+                    <TextBlock Text="⬅ Назад" />
+                </Button>
+            </StackPanel>
+            
+            <StackPanel Orientation="Horizontal" Spacing="10" Grid.Column="2">
+                <Button Command="{Binding RunCommandCommand}" 
+                        Background="#7C3AED" Foreground="White" 
+                        BorderThickness="0" CornerRadius="4" Padding="15,6">
+                    <TextBlock Text="▶ Run" FontWeight="Bold"/>
+                </Button>
+                <Button Command="{Binding ToggleOutputCommand}" 
+                        Background="Transparent" BorderBrush="#3E3E42" BorderThickness="1" 
+                        CornerRadius="4" Foreground="#CCCCCC" Padding="10,6">
+                    <TextBlock Text="Terminal" />
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

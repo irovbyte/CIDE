@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Publish Windows
+      run: dotnet publish CIDE.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o output/win
+
+    - name: Publish Linux
+      run: dotnet publish CIDE.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o output/linux
+
+    - name: Upload Release Asset
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          output/win/CIDE.exe
+          output/linux/CIDE
+        tag_name: latest
+        name: Latest Build
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

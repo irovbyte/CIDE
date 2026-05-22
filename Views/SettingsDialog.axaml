@@ -1,0 +1,42 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:services="clr-namespace:CIDE.Services"
+        x:Class="CIDE.Views.SettingsDialog"
+        Title="Настройки"
+        Width="500" Height="400"
+        WindowStartupLocation="CenterOwner"
+        Background="#1E1E1E"
+        CanResize="False"
+        ExtendClientAreaToDecorationsHint="True">
+
+    <Grid RowDefinitions="40, *, 60">
+        <!-- Заголовок -->
+        <TextBlock Grid.Row="0" Text="Настройки" FontSize="18" FontWeight="Bold" Foreground="#ECE9FC" VerticalAlignment="Center" Margin="20,0,0,0"/>
+
+        <Border Grid.Row="1" Background="#252526" BorderBrush="#333333" BorderThickness="0,1" Padding="20">
+            <TabControl Background="Transparent">
+                <TabItem Header="Редактор" Foreground="#ECE9FC">
+                    <StackPanel Spacing="15" Margin="0,15,0,0">
+                        <TextBlock Text="Настройки внешнего вида и поведения редактора кода." Foreground="#858585" FontSize="12" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                        
+                        <CheckBox x:Name="MinimapCheckBox" Content="Показывать миникарту" Foreground="#ECE9FC" />
+                        
+                        <CheckBox x:Name="WhitespacesCheckBox" Content="Показывать невидимые символы (пробелы, табы)" Foreground="#ECE9FC" />
+                        
+                        <CheckBox x:Name="BracketsCheckBox" Content="Подсветка парных скобок" Foreground="#ECE9FC" />
+
+                        <CheckBox x:Name="AutoSaveCheckBox" Content="Автосохранение" Foreground="#ECE9FC" />
+                    </StackPanel>
+                </TabItem>
+                <TabItem Header="Окружение" Foreground="#ECE9FC">
+                    <TextBlock Text="Дополнительные настройки IDE будут здесь." Foreground="#858585" Margin="0,15,0,0"/>
+                </TabItem>
+            </TabControl>
+        </Border>
+
+        <!-- Кнопки -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" VerticalAlignment="Center" Margin="0,0,20,0">
+            <Button x:Name="CloseButton" Content="Закрыть" Width="100" HorizontalContentAlignment="Center" Background="#7C3AED" Foreground="White" FontWeight="Bold"/>
+        </StackPanel>
+    </Grid>
+</Window>
