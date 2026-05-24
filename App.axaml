@@ -1,29 +1,156 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
              x:Class="CIDE.App"
              RequestedThemeVariant="Dark">
 
     <Application.Resources>
         <!-- ══════════ DESIGN TOKENS ══════════ -->
-        <SolidColorBrush x:Key="BgDeep" Color="#1E1E1E"/>
-        <SolidColorBrush x:Key="BgSurface" Color="#252526"/>
-        <SolidColorBrush x:Key="BgElevated" Color="#2D2D30"/>
-        <SolidColorBrush x:Key="BgHover" Color="#3E3E42"/>
-        <SolidColorBrush x:Key="BgInput" Color="#1B1B1F"/>
-        <SolidColorBrush x:Key="Border" Color="#3E3E42"/>
-        <SolidColorBrush x:Key="BorderSubtle" Color="#2D2D30"/>
-        <SolidColorBrush x:Key="Accent" Color="#7C3AED"/>
-        <SolidColorBrush x:Key="AccentLight" Color="#A78BFA"/>
-        <SolidColorBrush x:Key="AccentDim" Color="#5B21B6"/>
-        <SolidColorBrush x:Key="FgPrimary" Color="#CCCCCC"/>
-        <SolidColorBrush x:Key="FgSecondary" Color="#858585"/>
-        <SolidColorBrush x:Key="FgMuted" Color="#5A5A5A"/>
-        <SolidColorBrush x:Key="DangerHover" Color="#E81123"/>
+        <SolidColorBrush x:Key="BgDeep" Color="#0D0D12"/>
+        <SolidColorBrush x:Key="BgSurface" Color="#1A1A24"/>
+        <SolidColorBrush x:Key="BgElevated" Color="#272733"/>
+        <SolidColorBrush x:Key="BgHover" Color="#303040"/>
+        <SolidColorBrush x:Key="BgInput" Color="#13131A"/>
+        <SolidColorBrush x:Key="Border" Color="#303040"/>
+        <SolidColorBrush x:Key="BorderSubtle" Color="#272733"/>
+        <SolidColorBrush x:Key="Accent" Color="#9C27B0"/>
+        <SolidColorBrush x:Key="AccentLight" Color="#BA68C8"/>
+        <SolidColorBrush x:Key="AccentDim" Color="#6A1B9A"/>
+        <SolidColorBrush x:Key="FgPrimary" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="FgSecondary" Color="#B0B0C0"/>
+        <SolidColorBrush x:Key="FgMuted" Color="#707080"/>
+        <SolidColorBrush x:Key="DangerHover" Color="#FF3366"/>
+        
+        <LinearGradientBrush x:Key="AccentGradient" StartPoint="0%,0%" EndPoint="100%,100%">
+            <GradientStop Offset="0" Color="#9C27B0"/>
+            <GradientStop Offset="1" Color="#673AB7"/>
+        </LinearGradientBrush>
     </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
+
+        <!-- ══════════ FLUID DESIGN (Spring Animations) ══════════ -->
+        <!-- Отключаем назойливую рамку фокуса везде -->
+        <Style Selector=":is(Control)">
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+        </Style>
+
+        <Style Selector="Button.fluid">
+            <Setter Property="RenderTransform" Value="scale(1.0)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3" Easing="0.175, 0.885, 0.32, 1.275" />
+                    <BrushTransition Property="Background" Duration="0:0:0.2" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.fluid:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1.05) translateY(-2px)" />
+        </Style>
+        <Style Selector="Button.fluid:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.95)" />
+        </Style>
+
+        <Style Selector="Border.card">
+            <Setter Property="RenderTransform" Value="scale(1.0) translateY(0px)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.4" Easing="0.25, 1, 0.5, 1" />
+                    <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.4" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.card:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1.02) translateY(-5px)" />
+            <Setter Property="BoxShadow" Value="0 15 30 0 #409C27B0" />
+        </Style>
+
+        <Style Selector="ListBoxItem">
+            <Setter Property="Opacity" Value="0" />
+            <Style.Animations>
+                <Animation Duration="0:0:0.4" Easing="0.175, 0.885, 0.32, 1.275" FillMode="Forward">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0" />
+                        <Setter Property="TranslateTransform.X" Value="-15" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1" />
+                        <Setter Property="TranslateTransform.X" Value="0" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <!-- ══════════ ACTIVE WINDOW GLOW ══════════ -->
+        <!-- Панели редактора, терминала и боковой панели будут светиться при фокусе -->
+        <Style Selector="Border.glowOnFocus">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.4" Easing="CubicEaseOut" />
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.4" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <!-- :focus-within срабатывает, если фокус находится внутри панели -->
+        <Style Selector="Border.glowOnFocus:focus-within">
+            <Setter Property="BoxShadow" Value="0 0 30 5 #409C27B0" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+        </Style>
+
+        <!-- ══════════ GLOBAL ANIMATIONS ══════════ -->
+        <Style Selector="Border.windowFlyIn, UserControl.windowFlyIn, Grid.windowFlyIn">
+            <Style.Animations>
+                <Animation Duration="0:0:0.5" Easing="CubicEaseOut" FillMode="Forward">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0"/>
+                        <Setter Property="ScaleTransform.ScaleX" Value="0.95"/>
+                        <Setter Property="ScaleTransform.ScaleY" Value="0.95"/>
+                        <Setter Property="TranslateTransform.Y" Value="20"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1"/>
+                        <Setter Property="ScaleTransform.ScaleX" Value="1"/>
+                        <Setter Property="ScaleTransform.ScaleY" Value="1"/>
+                        <Setter Property="TranslateTransform.Y" Value="0"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <Style Selector="Border.panelSlideIn, UserControl.panelSlideIn, Grid.panelSlideIn">
+            <Style.Animations>
+                <Animation Duration="0:0:0.4" Easing="CubicEaseOut" FillMode="Forward">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0"/>
+                        <Setter Property="TranslateTransform.X" Value="-30"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1"/>
+                        <Setter Property="TranslateTransform.X" Value="0"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- ══════════ GLOBAL INPUT STYLES (Glassmorphism) ══════════ -->
+        <Style Selector="TextBox, ComboBox, ListBox">
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Background" Value="{DynamicResource BgInput}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{DynamicResource FgPrimary}"/>
+        </Style>
+        <Style Selector="TextBox:focus, ComboBox:focus">
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}"/>
+            <Setter Property="Background" Value="#1A1A24"/>
+        </Style>
 
         <!-- ══════════ GLOBAL BUTTON STYLE ══════════ -->
         <!-- Subtle button hover: smooth bg transition -->
@@ -35,8 +162,8 @@
             <Setter Property="CornerRadius" Value="4"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.15"/>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1"/>
+                    <BrushTransition Property="Background" Duration="0:0:0.2" Easing="CubicEaseInOut"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseInOut"/>
                 </Transitions>
             </Setter>
         </Style>
@@ -47,23 +174,55 @@
             <Setter Property="RenderTransform" Value="scale(0.97)"/>
         </Style>
 
+        <!-- Glow on Hover Effect -->
+        <Style Selector="Border.glowOnHover">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.3" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.glowOnHover:pointerover">
+            <Setter Property="BoxShadow" Value="0 0 30 5 #339C27B0"/>
+        </Style>
+
+        <Style Selector="Border.glowOnFocus">
+            <!-- Базовый прозрачный бордер, чтобы размеры не прыгали -->
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.3" Easing="CubicEaseOut" />
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.3" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        
+        <!-- Когда фокус ВНУТРИ этой панели -->
+        <Style Selector="Border.glowOnFocus:focus-within">
+            <!-- Глубокое фиолетовое свечение -->
+            <Setter Property="BoxShadow" Value="0 0 20 2 #509C27B0" />
+            <!-- Яркая рамка цвета AccentLight -->
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentLight}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
         <!-- Accent button (purple filled) -->
         <Style Selector="Button.accent">
-            <Setter Property="Background" Value="#7C3AED"/>
+            <Setter Property="Background" Value="{DynamicResource AccentGradient}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="Padding" Value="15,6"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.15"/>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseInOut"/>
                 </Transitions>
             </Setter>
         </Style>
         <Style Selector="Button.accent:pointerover">
-            <Setter Property="Background" Value="#A78BFA"/>
+            <Setter Property="Background" Value="{DynamicResource AccentLight}"/>
         </Style>
         <Style Selector="Button.accent:pressed">
             <Setter Property="RenderTransform" Value="scale(0.97)"/>
@@ -79,9 +238,9 @@
             <Setter Property="Padding" Value="15,6"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.15"/>
-                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1"/>
+                    <BrushTransition Property="Background" Duration="0:0:0.2" Easing="CubicEaseInOut"/>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.2" Easing="CubicEaseInOut"/>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseInOut"/>
                 </Transitions>
             </Setter>
         </Style>
@@ -103,7 +262,7 @@
             <Setter Property="Height" Value="35"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="CubicEaseInOut"/>
                 </Transitions>
             </Setter>
         </Style>
@@ -122,7 +281,7 @@
             <Setter Property="Height" Value="35"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="CubicEaseInOut"/>
                 </Transitions>
             </Setter>
         </Style>
@@ -140,8 +299,8 @@
             <Setter Property="MinHeight" Value="35"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
-                    <BrushTransition Property="Foreground" Duration="0:0:0.12"/>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="CubicEaseInOut"/>
+                    <BrushTransition Property="Foreground" Duration="0:0:0.15" Easing="CubicEaseInOut"/>
                 </Transitions>
             </Setter>
         </Style>
@@ -162,28 +321,28 @@
 
         <!-- Card hover with glow -->
         <Style Selector="Border.card">
-            <Setter Property="Background" Value="#252526"/>
-            <Setter Property="BorderBrush" Value="#3E3E42"/>
+            <Setter Property="Background" Value="{DynamicResource BgSurface}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="CornerRadius" Value="16"/>
             <Setter Property="Padding" Value="30"/>
             <Setter Property="Transitions">
                 <Transitions>
                     <BrushTransition Property="BorderBrush" Duration="0:0:0.2"/>
-                    <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.25"/>
+                    <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.25" Easing="CubicEaseInOut"/>
                 </Transitions>
             </Setter>
         </Style>
         <Style Selector="Border.card:pointerover">
-            <Setter Property="BorderBrush" Value="#7C3AED"/>
-            <Setter Property="BoxShadow" Value="0 0 20 0 #337C3AED"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentDim}"/>
+            <Setter Property="BoxShadow" Value="0 8 32 0 #339C27B0"/>
         </Style>
 
         <!-- Sidebar list item hover -->
         <Style Selector="ListBoxItem">
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.1"/>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="CubicEaseInOut"/>
                 </Transitions>
             </Setter>
         </Style>
@@ -196,7 +355,7 @@
             <Setter Property="CornerRadius" Value="4"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.2" Easing="CubicEaseInOut"/>
                 </Transitions>
             </Setter>
         </Style>
@@ -223,8 +382,15 @@
         <Style Selector="ScrollBar Thumb:pointerover">
             <Setter Property="Background" Value="#80FFFFFF" />
         </Style>
+        <!-- Идеальный инерционный скролл для всего приложения -->
         <Style Selector="ScrollViewer">
             <Setter Property="AllowAutoHide" Value="True"/>
+            <Setter Property="IsScrollInertiaEnabled" Value="True"/> <!-- Магия здесь -->
+        </Style>
+        
+        <!-- Включаем инерцию специально для редактора кода -->
+        <Style Selector="AvaloniaEdit|TextEditor">
+            <Setter Property="ScrollViewer.IsScrollInertiaEnabled" Value="True"/>
         </Style>
 
         <!-- Panel entrance animation (fade + slide) -->

@@ -5,23 +5,38 @@
              x:Class="CIDE.Views.SplashView">
 
     <UserControl.Styles>
-        <Style Selector="Border.glow">
+        <!-- Aura Glow Animation -->
+        <Style Selector="Border.aura">
             <Style.Animations>
-                <Animation Duration="0:0:2.5" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="CubicEaseInOut">
+                <Animation Duration="0:0:3" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="CubicEaseInOut">
                     <KeyFrame Cue="0%">
-                        <Setter Property="BoxShadow" Value="0 0 15 2 #7C3AED" />
+                        <Setter Property="BoxShadow" Value="0 0 40 10 #229C27B0" />
                         <Setter Property="ScaleTransform.ScaleX" Value="0.95" />
                         <Setter Property="ScaleTransform.ScaleY" Value="0.95" />
                     </KeyFrame>
                     <KeyFrame Cue="50%">
-                        <Setter Property="BoxShadow" Value="0 0 50 15 #A78BFA" />
-                        <Setter Property="ScaleTransform.ScaleX" Value="1.02" />
-                        <Setter Property="ScaleTransform.ScaleY" Value="1.02" />
+                        <Setter Property="BoxShadow" Value="0 0 100 30 #559C27B0" />
+                        <Setter Property="ScaleTransform.ScaleX" Value="1.05" />
+                        <Setter Property="ScaleTransform.ScaleY" Value="1.05" />
                     </KeyFrame>
                     <KeyFrame Cue="100%">
-                        <Setter Property="BoxShadow" Value="0 0 20 4 #7C3AED" />
-                        <Setter Property="ScaleTransform.ScaleX" Value="0.97" />
-                        <Setter Property="ScaleTransform.ScaleY" Value="0.97" />
+                        <Setter Property="BoxShadow" Value="0 0 60 20 #337C3AED" />
+                        <Setter Property="ScaleTransform.ScaleX" Value="1.0" />
+                        <Setter Property="ScaleTransform.ScaleY" Value="1.0" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- Gradient Shift Animation for Text Overlay -->
+        <Style Selector="Border.gradientOverlay">
+            <Style.Animations>
+                <Animation Duration="0:0:4" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="CubicEaseInOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0.1" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1.0" />
                     </KeyFrame>
                 </Animation>
             </Style.Animations>
@@ -29,10 +44,10 @@
 
         <Style Selector="StackPanel.entrance">
             <Style.Animations>
-                <Animation Duration="0:0:0.8" Easing="CubicEaseOut" FillMode="Forward">
+                <Animation Duration="0:0:1.2" Easing="CubicEaseOut" FillMode="Forward">
                     <KeyFrame Cue="0%">
                         <Setter Property="Opacity" Value="0.0" />
-                        <Setter Property="TranslateTransform.Y" Value="30" />
+                        <Setter Property="TranslateTransform.Y" Value="40" />
                     </KeyFrame>
                     <KeyFrame Cue="100%">
                         <Setter Property="Opacity" Value="1.0" />
@@ -41,49 +56,62 @@
                 </Animation>
             </Style.Animations>
         </Style>
-
-        <Style Selector="TextBlock.title">
-            <Style.Animations>
-                <Animation Duration="0:0:1" Easing="CubicEaseOut" FillMode="Forward" Delay="0:0:0.3">
-                    <KeyFrame Cue="0%">
-                        <Setter Property="Opacity" Value="0" />
-                    </KeyFrame>
-                    <KeyFrame Cue="100%">
-                        <Setter Property="Opacity" Value="1" />
-                    </KeyFrame>
-                </Animation>
-            </Style.Animations>
-        </Style>
     </UserControl.Styles>
 
-    <Grid Background="#1E1E1E">
-        <StackPanel Classes="entrance" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
+    <Grid Background="{DynamicResource BgDeep}">
+        
+        <!-- Big Aura in the background -->
+        <Border Classes="aura" Width="200" Height="200" CornerRadius="100" HorizontalAlignment="Center" VerticalAlignment="Center" Background="Transparent" Opacity="0.8">
+            <Border.RenderTransform>
+                <ScaleTransform />
+            </Border.RenderTransform>
+        </Border>
+
+        <StackPanel Classes="entrance" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="30">
+            <StackPanel.RenderTransform>
+                <TranslateTransform Y="40" />
+            </StackPanel.RenderTransform>
             
-            <!-- Logo with glow -->
-            <Grid Width="130" Height="130" HorizontalAlignment="Center">
-                <Border Classes="glow" CornerRadius="65" Background="#2D2D30" Opacity="0.9">
-                    <Border.RenderTransform>
-                        <ScaleTransform />
-                    </Border.RenderTransform>
+            <!-- CIDE Text Logo -->
+            <Grid>
+                <!-- Base Text -->
+                <TextBlock Text="CIDE" 
+                           FontSize="110" FontWeight="Black" 
+                           HorizontalAlignment="Center" LetterSpacing="10">
+                    <TextBlock.Foreground>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                            <GradientStop Color="#A78BFA" Offset="0" />
+                            <GradientStop Color="#7C3AED" Offset="0.5" />
+                            <GradientStop Color="#4C1D95" Offset="1" />
+                        </LinearGradientBrush>
+                    </TextBlock.Foreground>
+                </TextBlock>
+
+                <!-- Overlay Text to fake a moving gradient -->
+                <Border Classes="gradientOverlay">
+                    <TextBlock Text="CIDE" 
+                               FontSize="110" FontWeight="Black" 
+                               HorizontalAlignment="Center" LetterSpacing="10">
+                        <TextBlock.Foreground>
+                            <LinearGradientBrush StartPoint="100%,0%" EndPoint="0%,100%">
+                                <GradientStop Color="#F472B6" Offset="0" />
+                                <GradientStop Color="#9333EA" Offset="0.5" />
+                                <GradientStop Color="#3B82F6" Offset="1" />
+                            </LinearGradientBrush>
+                        </TextBlock.Foreground>
+                    </TextBlock>
                 </Border>
-                <Image Source="avares://CIDE/Assets/cide_logo.png" Width="100" Height="100" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center">
-                    <Image.RenderTransform>
-                        <ScaleTransform />
-                    </Image.RenderTransform>
-                </Image>
             </Grid>
 
-            <!-- Title -->
-            <TextBlock Classes="title" Text="CIDE" 
-                       FontSize="48" FontWeight="Bold" Foreground="#CCCCCC" 
-                       HorizontalAlignment="Center" LetterSpacing="6" Opacity="0"/>
+            <!-- Loading Indicator & Text -->
+            <StackPanel Spacing="12">
+                <ProgressBar IsIndeterminate="True" Width="220" Height="4" 
+                             Foreground="{DynamicResource AccentGradient}" Background="{DynamicResource BgInput}" CornerRadius="2"/>
 
-            <!-- Progress -->
-            <ProgressBar IsIndeterminate="True" Margin="0,20,0,0" Width="260" Height="3" 
-                         Foreground="#7C3AED" Background="#2D2D30" CornerRadius="2"/>
+                <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource FgSecondary}" FontSize="13" 
+                           HorizontalAlignment="Center" LetterSpacing="1" FontWeight="SemiBold"/>
+            </StackPanel>
 
-            <TextBlock Text="{Binding StatusText}" Foreground="#858585" FontSize="12" 
-                       HorizontalAlignment="Center" Margin="0,8,0,0"/>
         </StackPanel>
     </Grid>
 </UserControl>

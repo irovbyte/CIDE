@@ -1,7 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using AvaloniaEdit.Document;
+using Avalonia;
 namespace CIDE.Models;
+
 public enum FileNodeKind { Solution, Project, Folder, File }
 public partial class FileNode : ObservableObject
 {
@@ -12,16 +15,12 @@ public partial class FileNode : ObservableObject
     [ObservableProperty]
     public partial bool IsExpanded { get; set; }
     public bool IsPopulated { get; set; }
-    public int Depth { get; set; }
-    public string Glyph => Kind switch
-    {
-        FileNodeKind.Solution => "\uE810",
-        FileNodeKind.Project => "\uE80F",
-        FileNodeKind.Folder => IsExpanded ? "\uE974" : "\uE972",
-        FileNodeKind.File => "\uE8A0",
-        _ => " "
-    };
-    public string GlyphColor => Kind == FileNodeKind.Folder ? "#858585" : "#858585";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DepthLevels))]
+    public partial int Depth { get; set; }
+    public IEnumerable<int> DepthLevels => Enumerable.Range(0, Depth);
+    public string Glyph => Kind == FileNodeKind.File ? " " : "\uE76C";
+    public static string GlyphColor => "#707080";
     public string IconText => Kind switch
     {
         FileNodeKind.Solution => "\uE71B",
@@ -31,8 +30,7 @@ public partial class FileNode : ObservableObject
         {
             ".cs" or ".cpp" or ".c" or ".h" or ".hpp" => "\uE943",
             ".csproj" or ".sln" or ".slnx" => "\uE713",
-            ".xaml" => "\uE7C3",
-            ".json" => "\uE7C3",
+            ".xaml" or ".json" => "\uE7C3",
             _ => "\uE7C3"
         },
         _ => "\uE7C3"
@@ -55,7 +53,6 @@ public partial class FileNode : ObservableObject
     };
     partial void OnIsExpandedChanged(bool value)
     {
-        OnPropertyChanged(nameof(Glyph));
         OnPropertyChanged(nameof(IconText));
     }
 }
@@ -76,4 +73,24 @@ public partial class EditorTab : ObservableObject
     public string FileName => Path.GetFileName(FilePath);
     public string DisplayName => IsModified ? $"● {FileName}" : FileName;
     public string BackgroundBrush => IsActive ? "#1E1E1E" : "Transparent";
+    [JsonIgnore]
+    public TextDocument? Document { get; set; }
+    public Vector SavedScrollOffset { get; set; }
+    public int SavedCaretOffset { get; set; }
+}
+public enum BuildErrorSeverity { Error, Warning, Info }
+public class BuildError
+{
+    public string Message { get; set; } = "";
+    public string File { get; set; } = "";
+    public int Line { get; set; }
+    public string Code { get; set; } = "";
+    public BuildErrorSeverity Severity { get; set; }
+    public string DisplayText => $"[{Severity}] {(string.IsNullOrEmpty(Code) ? "" : Code + ": ")}{Message} in {File} (Line {Line})";
+    public string Color => Severity switch
+    {
+        BuildErrorSeverity.Error => "#FF5555",
+        BuildErrorSeverity.Warning => "#FFB86C",
+        _ => "#8BE9FD"
+    };
 }

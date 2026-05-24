@@ -1,0 +1,47 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CIDE.Views.ConfirmDialog"
+        Width="400" Height="200"
+        WindowStartupLocation="CenterOwner"
+        Background="Transparent"
+        SystemDecorations="None"
+        ShowInTaskbar="False">
+    
+    <Grid Classes="windowFlyIn">
+        <Border Background="{DynamicResource BgSurface}" 
+                BorderBrush="#E81123" 
+                BorderThickness="1" 
+                CornerRadius="12" 
+                Margin="10"
+                BoxShadow="0 10 30 0 #40E81123">
+            <Grid RowDefinitions="Auto, *, Auto" Margin="20">
+                <TextBlock Grid.Row="0" x:Name="TitleBlock" Text="Подтверждение" FontSize="16" FontWeight="Bold" Foreground="#FF5555" Margin="0,0,0,10"/>
+                
+                <StackPanel Grid.Row="1" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock x:Name="MessageBlock" Text="Вы уверены?" Foreground="{DynamicResource FgPrimary}" TextWrapping="Wrap"/>
+                </StackPanel>
+                
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,15,0,0">
+                    <Button Classes="ghost" Content="Отмена" Click="Cancel_Click" Width="100" HorizontalContentAlignment="Center"/>
+                    <!-- Custom styling for dangerous button -->
+                    <Button Content="Удалить" Click="Ok_Click" Width="100" HorizontalContentAlignment="Center"
+                            Background="#E81123" Foreground="White" FontWeight="Bold" BorderThickness="0" CornerRadius="4" Padding="15,6">
+                        <Button.Transitions>
+                            <Transitions>
+                                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseInOut"/>
+                            </Transitions>
+                        </Button.Transitions>
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="#FF4444"/>
+                            </Style>
+                            <Style Selector="Button:pressed">
+                                <Setter Property="RenderTransform" Value="scale(0.95)"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

@@ -22,6 +22,17 @@ public partial class CreateCppProjectDialog : Window
         BrowseButton.Click += BrowseButtonClickAsync;
         CancelButton.Click += (s, e) => Close();
         CreateButton.Click += CreateButton_Click;
+        var titleBar = this.FindControl<Avalonia.Controls.Border>("TitleBarBorder");
+        if (titleBar != null)
+        {
+            titleBar.PointerPressed += (s, e) =>
+            {
+                if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+                {
+                    BeginMoveDrag(e);
+                }
+            };
+        }
     }
 
     private async void BrowseButtonClickAsync(object? sender, RoutedEventArgs e)

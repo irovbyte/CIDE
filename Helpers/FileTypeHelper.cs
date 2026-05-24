@@ -1,6 +1,7 @@
 using System.Text;
 
 namespace CIDE.Helpers;
+
 public enum FileDisplayMode
 {
     Text,

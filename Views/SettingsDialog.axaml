@@ -3,40 +3,113 @@
         xmlns:services="clr-namespace:CIDE.Services"
         x:Class="CIDE.Views.SettingsDialog"
         Title="Настройки"
-        Width="500" Height="400"
+        Width="550" Height="450"
         WindowStartupLocation="CenterOwner"
-        Background="#181818"
+        Background="Transparent"
+        SystemDecorations="None"
         ShowInTaskbar="False">
 
-    <Grid RowDefinitions="*, Auto" Margin="12">
-        <Border Grid.Row="0" Background="#141414" BorderBrush="#2D2D2D" BorderThickness="1" CornerRadius="4" Padding="20">
-            <TabControl Background="Transparent">
-                <TabItem Header="Редактор" FontSize="14" Foreground="#ECE9FC">
-                    <StackPanel Spacing="15" Margin="0,15,0,0">
-                        <TextBlock Text="Настройки внешнего вида и поведения редактора кода." Foreground="#858585" FontSize="12" Margin="0,0,0,10" TextWrapping="Wrap"/>
-                        
-                        <CheckBox x:Name="MinimapCheckBox" Content="Показывать миникарту" Foreground="#D4D4D4" />
-                        <CheckBox x:Name="WhitespacesCheckBox" Content="Показывать невидимые символы (пробелы, табы)" Foreground="#D4D4D4" />
-                        <CheckBox x:Name="BracketsCheckBox" Content="Подсветка парных скобок" Foreground="#D4D4D4" />
-                        <CheckBox x:Name="AutoSaveCheckBox" Content="Автосохранение" Foreground="#D4D4D4" />
-                    </StackPanel>
-                </TabItem>
-                <TabItem Header="Форматирование" FontSize="14" Foreground="#ECE9FC">
-                    <StackPanel Spacing="15" Margin="0,15,0,0">
-                        <TextBlock Text="Настройки автоформатирования кода." Foreground="#858585" Margin="0,0,0,10"/>
-                        <CheckBox x:Name="UseLocalClangFormatCheckBox" Content="Использовать clang-format (для C/C++)" Foreground="#D4D4D4" />
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <TextBlock Text="Путь к clang-format:" Foreground="#D4D4D4" VerticalAlignment="Center" />
-                            <TextBox x:Name="ClangFormatPathTextBox" Width="250" Background="#1E1E1E" Foreground="#D4D4D4" BorderBrush="#2D2D2D" Watermark="по умолчанию: clang-format"/>
-                        </StackPanel>
-                    </StackPanel>
-                </TabItem>
-            </TabControl>
-        </Border>
+    <Grid Classes="windowFlyIn">
+        <!-- Main Glass Panel -->
+        <Border Background="{DynamicResource BgSurface}" 
+                BorderBrush="{DynamicResource BorderSubtle}" 
+                BorderThickness="1" 
+                CornerRadius="16" 
+                Margin="20"
+                BoxShadow="0 20 50 0 #40000000">
+            
+            <Grid RowDefinitions="Auto, *, Auto">
+                
+                <!-- Custom Draggable TitleBar -->
+                <Border x:Name="TitleBarBorder" Grid.Row="0" Background="Transparent" CornerRadius="16,16,0,0">
+                    <Grid Margin="20,15,20,10">
+                        <TextBlock Text="Настройки CIDE" FontSize="20" FontWeight="Bold" VerticalAlignment="Center">
+                            <TextBlock.Foreground>
+                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                                    <GradientStop Offset="0" Color="#9C27B0"/>
+                                    <GradientStop Offset="1" Color="#E040FB"/>
+                                </LinearGradientBrush>
+                            </TextBlock.Foreground>
+                        </TextBlock>
+                    </Grid>
+                </Border>
+                
+                <Border Grid.Row="1" Background="{DynamicResource BgInput}" Margin="20,0" CornerRadius="8" BorderThickness="1" BorderBrush="{DynamicResource BorderSubtle}">
+                    <TabControl Background="Transparent">
+                        <TabItem Header="Редактор" FontSize="14" Foreground="{DynamicResource FgPrimary}">
+                            <StackPanel Spacing="15" Margin="0,15,0,0">
+                                <TextBlock Text="Настройки внешнего вида и поведения редактора кода." Foreground="{DynamicResource FgSecondary}" FontSize="12" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                                
+                                <CheckBox x:Name="MinimapCheckBox" Content="Показывать миникарту" Foreground="{DynamicResource FgPrimary}" />
+                                <CheckBox x:Name="WhitespacesCheckBox" Content="Показывать невидимые символы (пробелы, табы)" Foreground="{DynamicResource FgPrimary}" />
+                                <CheckBox x:Name="BracketsCheckBox" Content="Подсветка парных скобок" Foreground="{DynamicResource FgPrimary}" />
+                                <CheckBox x:Name="AutoSaveCheckBox" Content="Автосохранение" Foreground="{DynamicResource FgPrimary}" />
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Форматирование" FontSize="14" Foreground="{DynamicResource FgPrimary}">
+                            <StackPanel Spacing="15" Margin="0,15,0,0">
+                                <TextBlock Text="Настройки автоформатирования кода." Foreground="{DynamicResource FgSecondary}" Margin="0,0,0,10"/>
+                                <CheckBox x:Name="UseLocalClangFormatCheckBox" Content="Использовать clang-format (для C/C++)" Foreground="{DynamicResource FgPrimary}" />
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="Путь к clang-format:" Foreground="{DynamicResource FgPrimary}" VerticalAlignment="Center" />
+                                    <TextBox x:Name="ClangFormatPathTextBox" Width="250" PlaceholderText="по умолчанию: clang-format"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </TabItem>
+                        <TabItem Header="Горячие клавиши" FontSize="14" Foreground="{DynamicResource FgPrimary}">
+                            <ScrollViewer Margin="0,15,0,0">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Список доступных горячих клавиш редактора." Foreground="{DynamicResource FgSecondary}" FontSize="12" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                                    
+                                    <TextBlock Text="Поиск и замена" FontWeight="Bold" Foreground="{DynamicResource AccentGradient}" Margin="0,5,0,0"/>
+                                    <Grid ColumnDefinitions="100, *" RowDefinitions="Auto,Auto,Auto,Auto" Margin="10,0,0,0">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Ctrl+F" Foreground="{DynamicResource FgPrimary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="Открыть панель поиска" Foreground="{DynamicResource FgSecondary}"/>
+                                        
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Ctrl+H" Foreground="{DynamicResource FgPrimary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="Открыть панель замены" Foreground="{DynamicResource FgSecondary}"/>
+                                        
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Escape" Foreground="{DynamicResource FgPrimary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="Закрыть панели поиска/замены" Foreground="{DynamicResource FgSecondary}"/>
 
-        <!-- Кнопки -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,12,0,0">
-            <Button x:Name="CloseButton" Content="Закрыть" Width="100" HorizontalContentAlignment="Center" Background="#0078D4" Foreground="White" CornerRadius="4" FontWeight="Bold"/>
-        </StackPanel>
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="↑ / ↓" Foreground="{DynamicResource FgPrimary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="Предыдущее/Следующее совпадение (в поиске)" Foreground="{DynamicResource FgSecondary}"/>
+                                    </Grid>
+
+                                    <TextBlock Text="Редактирование" FontWeight="Bold" Foreground="{DynamicResource AccentGradient}" Margin="0,10,0,0"/>
+                                    <Grid ColumnDefinitions="100, *" RowDefinitions="Auto,Auto,Auto,Auto" Margin="10,0,0,0">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Ctrl+/" Foreground="{DynamicResource FgPrimary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="Закомментировать/раскомментировать строку" Foreground="{DynamicResource FgSecondary}"/>
+                                        
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Ctrl+D" Foreground="{DynamicResource FgPrimary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="Выделить слово/следующее вхождение" Foreground="{DynamicResource FgSecondary}"/>
+                                        
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Alt+↑/↓" Foreground="{DynamicResource FgPrimary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="Переместить строку вверх/вниз" Foreground="{DynamicResource FgSecondary}"/>
+
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Tab" Foreground="{DynamicResource FgPrimary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="Умный отступ (Shift+Tab — убрать отступ). Также разворачивает сниппеты: cw, for, mainc" Foreground="{DynamicResource FgSecondary}"/>
+                                    </Grid>
+
+                                    <TextBlock Text="Файловый менеджер" FontWeight="Bold" Foreground="{DynamicResource AccentGradient}" Margin="0,10,0,0"/>
+                                    <Grid ColumnDefinitions="100, *" RowDefinitions="Auto,Auto" Margin="10,0,0,0">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="F2" Foreground="{DynamicResource FgPrimary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="Переименовать выбранный файл или папку" Foreground="{DynamicResource FgSecondary}"/>
+                                        
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Del" Foreground="{DynamicResource FgPrimary}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="Удалить выбранный файл или папку" Foreground="{DynamicResource FgSecondary}"/>
+                                    </Grid>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+                    </TabControl>
+                </Border>
+
+                <!-- Footer Buttons -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="20,15,20,20">
+                    <Button x:Name="CloseButton" Classes="accent" Content="Сохранить и закрыть" Width="200" HorizontalContentAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

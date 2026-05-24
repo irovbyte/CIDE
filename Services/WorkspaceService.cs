@@ -60,10 +60,30 @@ public static class WorkspaceService
         return null;
     }
 
-    public static IFileSystemProvider CurrentProvider { get; set; } = new LocalFileSystemProvider();
+    private static IFileSystemProvider _currentProvider = new LocalFileSystemProvider();
+    public static IFileSystemProvider CurrentProvider
+    {
+        get => _currentProvider;
+        set
+        {
+            if (_currentProvider is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+            _currentProvider = value;
+        }
+    }
 
     public static async Task<string> ReadFileAsync(string path) => await CurrentProvider.ReadFileAsync(path);
     public static async Task SaveFileAsync(string path, string content) => await CurrentProvider.SaveFileAsync(path, content);
+    public static async Task CreateFileAsync(string path) => await CurrentProvider.CreateFileAsync(path);
+    public static async Task CreateDirectoryAsync(string path) => await CurrentProvider.CreateDirectoryAsync(path);
+    public static async Task RenameAsync(string oldPath, string newPath) => await CurrentProvider.RenameAsync(oldPath, newPath);
+    public static async Task DeleteAsync(string path)
+    {
+        bool isDir = await CurrentProvider.DirectoryExistsAsync(path);
+        await CurrentProvider.DeleteAsync(path, isDir);
+    }
 
     public static async Task<FileNode> BuildFolderTreeAsync(string rootPath)
     {

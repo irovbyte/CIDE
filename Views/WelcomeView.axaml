@@ -35,13 +35,26 @@
                 </Animation>
             </Style.Animations>
         </Style>
-        <!-- Title entrance -->
-        <Style Selector="StackPanel.welcomeTitle">
+
+        <Style Selector="TextBlock.movingGradient">
             <Style.Animations>
-                <Animation Duration="0:0:0.6" Easing="CubicEaseOut" FillMode="Forward">
+                <Animation Duration="0:0:3" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
                     <KeyFrame Cue="0%">
                         <Setter Property="Opacity" Value="0"/>
-                        <Setter Property="TranslateTransform.Y" Value="20"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <Style Selector="StackPanel.welcomeTitle">
+            <Style.Animations>
+                <Animation Duration="0:0:0.8" Easing="CubicEaseOut" FillMode="Forward">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0"/>
+                        <Setter Property="TranslateTransform.Y" Value="-30"/>
                     </KeyFrame>
                     <KeyFrame Cue="100%">
                         <Setter Property="Opacity" Value="1"/>
@@ -50,83 +63,152 @@
                 </Animation>
             </Style.Animations>
         </Style>
+
+        <Style Selector="Border.hoverZone">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="24"/>
+            <Setter Property="Padding" Value="30, 40"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2" Easing="SineEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.hoverZone:pointerover">
+            <Setter Property="Background" Value="#0AFFFFFF"/>
+        </Style>
     </UserControl.Styles>
 
     <Grid Background="Transparent">
-        <Grid RowDefinitions="*, Auto" Margin="40">
-            
-            <!-- Right Panel: Actions -->
-            <StackPanel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="40">
-                <!-- Title -->
-                <StackPanel Classes="welcomeTitle" HorizontalAlignment="Center" Spacing="10" Opacity="0">
-                    <StackPanel.RenderTransform><TranslateTransform/></StackPanel.RenderTransform>
-                    <TextBlock Text="CIDE" FontSize="48" FontWeight="Bold" Foreground="#3A3A42" 
-                               HorizontalAlignment="Center" LetterSpacing="4"/>
-                    <TextBlock Text="Современная среда разработки для C/C++ и C#" 
-                               FontSize="14" Foreground="#555562" HorizontalAlignment="Center"/>
-                </StackPanel>
+        <!-- Viewbox makes sure everything scales down gracefully if window is small -->
+        <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
+            <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="{DynamicResource BgSurface}" 
+                    BorderBrush="{DynamicResource AccentDim}" BorderThickness="1"
+                    CornerRadius="30" Padding="80, 50" Margin="40"
+                    BoxShadow="0 0 80 20 #339C27B0">
+                
+                <Grid RowDefinitions="Auto, *, Auto">
+                    
+                    <!-- Center Panel: Actions -->
+                    <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="40" Margin="0,20,0,0">
+                        <!-- Giant Animated Title -->
+                        <StackPanel Classes="welcomeTitle" HorizontalAlignment="Center" Spacing="15" Opacity="0">
+                            <StackPanel.RenderTransform><TranslateTransform/></StackPanel.RenderTransform>
+                            
+                            <!-- Overlapping TextBlocks to create a "breathing" moving gradient effect -->
+                            <Grid HorizontalAlignment="Center">
+                                <TextBlock Text="CIDE" FontSize="96" FontWeight="Black" LetterSpacing="12" HorizontalAlignment="Center">
+                                    <TextBlock.Foreground>
+                                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                                            <GradientStop Offset="0" Color="#673AB7"/>
+                                            <GradientStop Offset="0.5" Color="#9C27B0"/>
+                                            <GradientStop Offset="1" Color="#E040FB"/>
+                                        </LinearGradientBrush>
+                                    </TextBlock.Foreground>
+                                    <TextBlock.Effect><DropShadowEffect BlurRadius="30" Color="#9C27B0" Opacity="0.4"/></TextBlock.Effect>
+                                </TextBlock>
+                                
+                                <TextBlock Text="CIDE" FontSize="96" FontWeight="Black" LetterSpacing="12" HorizontalAlignment="Center" Classes="movingGradient">
+                                    <TextBlock.Foreground>
+                                        <LinearGradientBrush StartPoint="100%,100%" EndPoint="0%,0%">
+                                            <GradientStop Offset="0" Color="#D500F9"/>
+                                            <GradientStop Offset="0.5" Color="#673AB7"/>
+                                            <GradientStop Offset="1" Color="#4A148C"/>
+                                        </LinearGradientBrush>
+                                    </TextBlock.Foreground>
+                                </TextBlock>
+                            </Grid>
+                        </StackPanel>
 
-                <Grid ColumnDefinitions="320, 30, 320" HorizontalAlignment="Center">
-                    <!-- Card 1: C/C++ -->
-                    <Border Grid.Column="0" Classes="card cardLeft" Opacity="0">
-                    <Border.RenderTransform><TranslateTransform/></Border.RenderTransform>
-                    <StackPanel Spacing="20">
-                        <TextBlock Text="⟨/⟩  C / C++" FontSize="22" FontWeight="SemiBold" 
-                                   Foreground="#4EC9B0" HorizontalAlignment="Center"/>
-                        <TextBlock Text="Нативные приложения, скрипты и системы с использованием Makefile/CMake." 
-                                   Foreground="#858585" TextWrapping="Wrap" TextAlignment="Center" Height="50"/>
-                        <Button Classes="accent" Content="Создать проект" 
-                                Command="{Binding CreateCppProjectCommand}"
-                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
-                        <Button Classes="ghost" Content="Открыть папку" 
-                                Command="{Binding OpenFolderCommand}"
-                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
-                    </StackPanel>
-                    </Border>
+                        <Grid ColumnDefinitions="360, 20, 360, 20, 360" HorizontalAlignment="Center">
+                            <!-- Card 1: C/C++ -->
+                            <Border Grid.Column="0" Classes="hoverZone card cardLeft" Opacity="0">
+                            <Border.RenderTransform><TranslateTransform/></Border.RenderTransform>
+                            <StackPanel Spacing="15">
+                                <TextBlock Text="&lt;/&gt;" FontFamily="Consolas, Courier New, monospace" FontSize="64" FontWeight="Bold" Foreground="#4EC9B0" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                    <TextBlock.Effect><DropShadowEffect BlurRadius="15" Color="#4EC9B0" Opacity="0.4"/></TextBlock.Effect>
+                                </TextBlock>
+                                <TextBlock Text="C/C++" FontSize="28" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Нативные проекты, CMake и высоконагруженные системы." 
+                                           Foreground="#808090" TextWrapping="Wrap" TextAlignment="Center" MinHeight="45" FontSize="15"/>
+                                
+                                <Button Classes="accent fluid" Content="Создать проект" 
+                                        Command="{Binding CreateCppProjectCommand}"
+                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,15" Margin="0,20,0,0"/>
+                                <Button Classes="ghost fluid" Content="Или открыть папку" 
+                                        Command="{Binding OpenFolderCommand}"
+                                        Foreground="#808090" BorderThickness="0" Background="Transparent"
+                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,10"/>
+                            </StackPanel>
+                            </Border>
 
-                    <!-- Card 2: C# -->
-                    <Border Grid.Column="2" Classes="card cardRight" Opacity="0">
-                    <Border.RenderTransform><TranslateTransform/></Border.RenderTransform>
-                    <StackPanel Spacing="20">
-                        <TextBlock Text="♯  C# .NET" FontSize="22" FontWeight="SemiBold" 
-                                   Foreground="#C586C0" HorizontalAlignment="Center"/>
-                        <TextBlock Text="Современные кроссплатформенные приложения с помощью .NET SDK." 
-                                   Foreground="#858585" TextWrapping="Wrap" TextAlignment="Center" Height="50"/>
-                        <Button Classes="accent" Content="Создать проект" 
-                                Command="{Binding CreateCsharpProjectCommand}"
-                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
-                        <Button Classes="ghost" Content="Открыть решение (.slnx)" 
-                                Command="{Binding OpenSolutionCommand}"
-                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
+                            <!-- Card 2: C# -->
+                            <Border Grid.Column="2" Classes="hoverZone card cardRight" Opacity="0">
+                            <Border.RenderTransform><TranslateTransform/></Border.RenderTransform>
+                            <StackPanel Spacing="15">
+                                <TextBlock Text="C#" FontFamily="Consolas, Courier New, monospace" FontSize="64" FontWeight="Bold" Foreground="#C586C0" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                    <TextBlock.Effect><DropShadowEffect BlurRadius="15" Color="#C586C0" Opacity="0.4"/></TextBlock.Effect>
+                                </TextBlock>
+                                <TextBlock Text="C# .NET" FontSize="28" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Кроссплатформенные приложения, UI и микросервисы." 
+                                           Foreground="#808090" TextWrapping="Wrap" TextAlignment="Center" MinHeight="45" FontSize="15"/>
+                                
+                                <Button Classes="accent fluid" Content="Создать проект" 
+                                        Command="{Binding CreateCsharpProjectCommand}"
+                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,15" Margin="0,20,0,0"/>
+                                <Button Classes="ghost fluid" Content="Или открыть решение" 
+                                        Command="{Binding OpenSolutionCommand}"
+                                        Foreground="#808090" BorderThickness="0" Background="Transparent"
+                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,10"/>
+                            </StackPanel>
+                            </Border>
+
+                            <!-- Card 3: SSH -->
+                            <Border Grid.Column="4" Classes="hoverZone card cardRight" Opacity="0">
+                            <Border.RenderTransform><TranslateTransform/></Border.RenderTransform>
+                            <StackPanel Spacing="15">
+                                <TextBlock Text="&gt;_" FontFamily="Consolas, Courier New, monospace" FontSize="64" FontWeight="Bold" Foreground="#FF9800" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                    <TextBlock.Effect><DropShadowEffect BlurRadius="15" Color="#FF9800" Opacity="0.4"/></TextBlock.Effect>
+                                </TextBlock>
+                                <TextBlock Text="SSH Сервер" FontSize="28" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Удаленная разработка. Нулевая нагрузка на ваш компьютер." 
+                                           Foreground="#808090" TextWrapping="Wrap" TextAlignment="Center" MinHeight="45" FontSize="15"/>
+                                
+                                <Button Classes="accent fluid" Content="Подключиться по SSH" 
+                                        Command="{Binding ConnectSshCommand}"
+                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,15" Margin="0,20,0,0"/>
+                                <!-- Empty spacer to match button heights -->
+                                <Border Height="38"/>
+                            </StackPanel>
+                            </Border>
+                        </Grid>
                     </StackPanel>
-                    </Border>
+
+                    <!-- Bottom Panel: Recent Workspaces -->
+                    <StackPanel Grid.Row="2" HorizontalAlignment="Center" Margin="0,40,0,0">
+                        <TextBlock Text="Недавние проекты:" FontSize="16" FontWeight="SemiBold" Foreground="#858585" Margin="0,0,0,10" HorizontalAlignment="Center"/>
+                        
+                        <ItemsControl ItemsSource="{Binding RecentWorkspaces}" HorizontalAlignment="Center">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" MaxWidth="800" HorizontalAlignment="Center"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Classes="subtle fluid" Content="{Binding}" 
+                                            Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).OpenRecentWorkspaceCommand}"
+                                            CommandParameter="{Binding}"
+                                            Margin="5" Padding="15,8" CornerRadius="8" FontSize="14" Foreground="#B0B0C0" Background="#13131A" BorderBrush="#303040" BorderThickness="1"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        
+                        <TextBlock Text="Нет недавних проектов" Foreground="#5A5A5A" FontSize="14" IsVisible="{Binding !RecentWorkspaces.Count}" HorizontalAlignment="Center" Margin="10,0"/>
+                    </StackPanel>
                 </Grid>
-            </StackPanel>
-
-            <!-- Bottom Panel: Recent Workspaces -->
-            <StackPanel Grid.Row="1" HorizontalAlignment="Center" Margin="0,40,0,0">
-                <TextBlock Text="Недавние проекты:" FontSize="16" FontWeight="SemiBold" Foreground="#858585" Margin="0,0,0,10" HorizontalAlignment="Center"/>
-                
-                <ItemsControl ItemsSource="{Binding RecentWorkspaces}" HorizontalAlignment="Center">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal" MaxWidth="800" HorizontalAlignment="Center"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Button Classes="subtle" Content="{Binding}" 
-                                    Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).OpenRecentWorkspaceCommand}"
-                                    CommandParameter="{Binding}"
-                                    Margin="5"
-                                    ToolTip.Tip="{Binding}"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                
-                <TextBlock Text="Нет недавних проектов" Foreground="#5A5A5A" FontSize="14" IsVisible="{Binding !RecentWorkspaces.Count}" HorizontalAlignment="Center" Margin="10,0"/>
-            </StackPanel>
-        </Grid>
-
+            </Border>
+        </Viewbox>
     </Grid>
 </UserControl>

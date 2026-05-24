@@ -7,38 +7,173 @@
              x:Class="CIDE.Views.SidebarView"
              Background="Transparent">
 
-    <UserControl.Resources>
-        <helpers:DepthToMarginConverter x:Key="DepthToMarginConverter" />
-    </UserControl.Resources>
+    <Border Classes="glowOnHover glowOnFocus panelSlideIn" Background="{DynamicResource BgSurface}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="12" ClipToBounds="True">
+        <Grid RowDefinitions="Auto, *">
 
-    <Grid RowDefinitions="Auto, *">
-        <TextBlock Text="ОБОЗРЕВАТЕЛЬ" FontSize="11" FontWeight="Bold" Foreground="#858585" Margin="15,8,15,10" />
-
-        <ListBox Grid.Row="1" ItemsSource="{Binding FlatTree}" Background="Transparent" BorderThickness="0">
-            <ListBox.ItemTemplate>
-                <DataTemplate DataType="models:FileNode">
-                    <StackPanel Orientation="Horizontal" Spacing="6" Background="Transparent" 
-                                PointerPressed="FileNode_PointerPressed" Margin="{Binding Depth, Converter={StaticResource DepthToMarginConverter}}">
-                        <TextBlock Text="{Binding Glyph}" Foreground="{Binding GlyphColor}" FontFamily="Segoe Fluent Icons" VerticalAlignment="Center" FontSize="12" />
-                        <TextBlock Text="{Binding IconText}" Foreground="{Binding IconColor}" FontFamily="Segoe Fluent Icons" VerticalAlignment="Center" FontSize="14" />
-                        <TextBlock Text="{Binding Name}" Foreground="#CCCCCC" FontSize="13" VerticalAlignment="Center" />
+            <Border Grid.Row="0" Margin="10,10,10,0" Padding="12,8" CornerRadius="8" Background="#11FFFFFF" BorderThickness="1" BorderBrush="#15FFFFFF">
+                <Grid ColumnDefinitions="*, Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="📁" FontSize="14" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding ExplorerTitle}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentLight}" LetterSpacing="1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-            <ListBox.Styles>
-                <Style Selector="ListBoxItem">
-                    <Setter Property="Padding" Value="8,4"/>
-                    <Setter Property="MinHeight" Value="24"/>
-                    <Setter Property="CornerRadius" Value="4"/>
-                    <Setter Property="Margin" Value="4,1"/>
-                    <Setter Property="Transitions">
-                        <Transitions>
-                            <BrushTransition Property="Background" Duration="0:0:0.15"/>
-                            <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
-                        </Transitions>
-                    </Setter>
-                </Style>
-            </ListBox.Styles>
-        </ListBox>
-    </Grid>
+                    
+                    <!-- Тулбар действий с файлами -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <Button Classes="subtle" Command="{Binding CreateFileNodeCommand}" Padding="4" ToolTip.Tip="Новый файл">
+                            <TextBlock Text="📄" FontSize="12"/>
+                        </Button>
+                        <Button Classes="subtle" Command="{Binding CreateFolderNodeCommand}" Padding="4" ToolTip.Tip="Новая папка">
+                            <TextBlock Text="📁" FontSize="12"/>
+                        </Button>
+                        <Button Classes="subtle" Command="{Binding RenameNodeCommand}" Padding="4" ToolTip.Tip="Переименовать (F2)">
+                            <TextBlock Text="✏️" FontSize="12"/>
+                        </Button>
+                        <Button Classes="subtle" Command="{Binding DeleteNodeCommand}" Padding="4" ToolTip.Tip="Удалить (Del)">
+                            <TextBlock Text="🗑️" FontSize="12"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ДЕРЕВО ФАЙЛОВ -->
+            <ListBox x:Name="FileTreeListBox"
+                     Grid.Row="1"
+                     ItemsSource="{Binding FlatTree}"
+                     SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     Margin="0,5,0,10"
+                     SelectionMode="Single"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                
+                <ListBox.KeyBindings>
+                    <KeyBinding Gesture="F2" Command="{Binding RenameNodeCommand}" />
+                    <KeyBinding Gesture="Delete" Command="{Binding DeleteNodeCommand}" />
+                </ListBox.KeyBindings>
+
+                <!-- ИСПРАВЛЕНИЕ: Отключаем виртуализацию (заменяем на StackPanel) для идеальной работы анимации "аккордеона" -->
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="models:FileNode">
+                        <Border Background="Transparent" PointerPressed="FileNode_PointerPressed" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Padding="4,0">
+                            
+                            <!-- ДОБАВЛЯЕМ КОНТЕКСТНОЕ МЕНЮ СЮДА -->
+                            <Border.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="📄 Новый файл" Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).CreateFileNodeCommand}" />
+                                    <MenuItem Header="📁 Новая папка" Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).CreateFolderNodeCommand}" />
+                                    <Separator />
+                                    <MenuItem Header="✏️ Переименовать" Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).RenameNodeCommand}" InputGesture="F2" />
+                                    <MenuItem Header="🗑️ Удалить" Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).DeleteNodeCommand}" InputGesture="Delete" Foreground="#FF5555" />
+                                </ContextMenu>
+                            </Border.ContextMenu>
+
+                            <!-- HorizontalStackLayout убран, используем Grid для жесткой привязки ширин -->
+                            <Grid ColumnDefinitions="Auto, Auto, Auto, *">
+
+                                <!-- 1. ИНДИКАТОРЫ ВЛОЖЕННОСТИ (Линии отступа) -->
+                                <!-- За счет Grid мы жестко задаем ширину (16px) на каждый уровень вложенности -->
+                                <ItemsControl Grid.Column="0" ItemsSource="{Binding DepthLevels}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Width="16" Height="26">
+                                                <Rectangle Width="1" Fill="#1AFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                
+                                <!-- 2. ВРАЩАЮЩАЯСЯ СТРЕЛОЧКА (Класс expanded биндится к IsExpanded) -->
+                                <Border Grid.Column="1" Width="20" Background="Transparent" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Glyph}"
+                                               Foreground="{Binding GlyphColor}"
+                                               FontFamily="{StaticResource IconFont}"
+                                               FontSize="10"
+                                               HorizontalAlignment="Center"
+                                               Classes.expanded="{Binding IsExpanded}">
+                                        <TextBlock.Styles>
+                                            <!-- Состояние закрыто -->
+                                            <Style Selector="TextBlock">
+                                                <Setter Property="RenderTransform" Value="rotate(0deg)" />
+                                                <Setter Property="Transitions">
+                                                    <Transitions>
+                                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+                                                    </Transitions>
+                                                </Setter>
+                                            </Style>
+                                            <!-- Состояние открыто -->
+                                            <Style Selector="TextBlock.expanded">
+                                                <Setter Property="RenderTransform" Value="rotate(90deg)" />
+                                            </Style>
+                                        </TextBlock.Styles>
+                                    </TextBlock>
+                                </Border>
+
+                                <!-- 3. ИКОНКА ПАПКИ/ФАЙЛА -->
+                                <Border Grid.Column="2" Width="24" Background="Transparent" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding IconText}"
+                                               Foreground="{Binding IconColor}"
+                                               FontFamily="{StaticResource IconFont}"
+                                               FontSize="14"
+                                               HorizontalAlignment="Center"/>
+                                </Border>
+
+                                <!-- 4. ИМЯ ФАЙЛА -->
+                                <!-- TextWrapping="NoWrap" и TextTrimming="CharacterEllipsis" защищают от сплющивания всего Grid'а -->
+                                <TextBlock Grid.Column="3"
+                                           Text="{Binding Name}"
+                                           Foreground="{DynamicResource FgPrimary}"
+                                           FontSize="13"
+                                           VerticalAlignment="Center"
+                                           Margin="4,0,0,0"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+
+                <ListBox.Styles>
+                    <Style Selector="ListBoxItem">
+                        <Setter Property="CornerRadius" Value="4"/>
+                        <Setter Property="Margin" Value="4,0"/>
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                        <Setter Property="MinHeight" Value="26"/>
+                        <Setter Property="Transitions">
+                            <Transitions>
+                                <BrushTransition Property="Background" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+                            </Transitions>
+                        </Setter>
+                        <Style.Animations>
+                            <Animation Duration="0:0:0.15" Easing="CubicEaseOut" FillMode="Forward">
+                                <KeyFrame Cue="0%">
+                                    <Setter Property="Height" Value="0"/>
+                                </KeyFrame>
+                                <KeyFrame Cue="100%">
+                                    <Setter Property="Height" Value="26"/>
+                                </KeyFrame>
+                            </Animation>
+                        </Style.Animations>
+                    </Style>
+                    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                        <Setter Property="Background" Value="#1AFFFFFF"/>
+                    </Style>
+                    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+                        <Setter Property="Background" Value="#339C27B0"/>
+                    </Style>
+                </ListBox.Styles>
+            </ListBox>
+        </Grid>
+    </Border>
 </UserControl>

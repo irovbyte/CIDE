@@ -1,47 +1,72 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="CIDE.Views.CreateCppProjectDialog"
-        Title="Создание C/C++ проекта"
-        Width="500" Height="380"
+        Title="Создать проект C/C++"
+        Width="550" Height="450"
         WindowStartupLocation="CenterOwner"
-        Background="#0A0714"
-        CanResize="False"
-        ExtendClientAreaToDecorationsHint="True">
+        Background="Transparent"
+        SystemDecorations="None"
+        ShowInTaskbar="False">
 
-    <Grid RowDefinitions="40, *, 60" Margin="20">
-        <!-- Заголовок -->
-        <TextBlock Grid.Row="0" Text="Новый проект C / C++" FontSize="20" FontWeight="Bold" Foreground="#ECE9FC" VerticalAlignment="Center"/>
+    <Grid Classes="windowFlyIn">
+        <!-- Main Glass Panel -->
+        <Border Background="{DynamicResource BgSurface}" 
+                BorderBrush="{DynamicResource BorderSubtle}" 
+                BorderThickness="1" 
+                CornerRadius="16" 
+                Margin="20"
+                BoxShadow="0 20 50 0 #40000000">
 
-        <!-- Форма -->
-        <StackPanel Grid.Row="1" Spacing="15" Margin="0,20,0,0">
-            
-            <StackPanel Spacing="5">
-                <TextBlock Text="Название проекта" Foreground="#858585" FontSize="12"/>
-                <TextBox x:Name="ProjectNameTextBox" Text="MyProject" Background="#06040A" Foreground="#ECE9FC" BorderBrush="#1D153A"/>
-            </StackPanel>
+            <Grid RowDefinitions="Auto, *, Auto">
+                
+                <!-- Custom Draggable TitleBar -->
+                <Border x:Name="TitleBarBorder" Grid.Row="0" Background="Transparent" CornerRadius="16,16,0,0">
+                    <Grid Margin="20,15,20,10">
+                        <TextBlock Text="Новый проект C/C++" FontSize="20" FontWeight="Bold" VerticalAlignment="Center">
+                            <TextBlock.Foreground>
+                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                                    <GradientStop Offset="0" Color="#9C27B0"/>
+                                    <GradientStop Offset="1" Color="#E040FB"/>
+                                </LinearGradientBrush>
+                            </TextBlock.Foreground>
+                        </TextBlock>
+                    </Grid>
+                </Border>
 
-            <StackPanel Spacing="5">
-                <TextBlock Text="Путь" Foreground="#858585" FontSize="12"/>
-                <Grid ColumnDefinitions="*, 80">
-                    <TextBox x:Name="ProjectPathTextBox" Grid.Column="0" Background="#06040A" Foreground="#ECE9FC" BorderBrush="#1D153A" Margin="0,0,10,0"/>
-                    <Button x:Name="BrowseButton" Grid.Column="1" Content="Обзор..." HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="#1D153A" Foreground="#ECE9FC"/>
-                </Grid>
-            </StackPanel>
+                <!-- Content -->
+                <Border Grid.Row="1" Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="12" Margin="20,0,20,20" Padding="20">
+                    <StackPanel Spacing="20">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Язык" Foreground="{DynamicResource FgSecondary}" FontSize="13"/>
+                            <ComboBox x:Name="LanguageComboBox" SelectedIndex="1" HorizontalAlignment="Stretch">
+                                <ComboBoxItem>C</ComboBoxItem>
+                                <ComboBoxItem>C++</ComboBoxItem>
+                            </ComboBox>
+                        </StackPanel>
 
-            <StackPanel Spacing="5">
-                <TextBlock Text="Язык" Foreground="#858585" FontSize="12"/>
-                <ComboBox x:Name="LanguageComboBox" SelectedIndex="1" HorizontalAlignment="Stretch" Background="#06040A" Foreground="#ECE9FC" BorderBrush="#1D153A">
-                    <ComboBoxItem Content="C (gcc)"/>
-                    <ComboBoxItem Content="C++ (g++)"/>
-                </ComboBox>
-            </StackPanel>
-            
-        </StackPanel>
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Имя проекта" Foreground="{DynamicResource FgSecondary}" FontSize="13"/>
+                            <TextBox x:Name="ProjectNameTextBox" Text="MyCppApp"/>
+                        </StackPanel>
 
-        <!-- Кнопки -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" VerticalAlignment="Bottom">
-            <Button x:Name="CancelButton" Content="Отмена" Width="100" HorizontalContentAlignment="Center" Background="Transparent" Foreground="#858585" BorderBrush="#1D153A"/>
-            <Button x:Name="CreateButton" Content="Создать" Width="100" HorizontalContentAlignment="Center" Background="#7C3AED" Foreground="White" FontWeight="Bold"/>
-        </StackPanel>
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Расположение" Foreground="{DynamicResource FgSecondary}" FontSize="13"/>
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBox x:Name="ProjectPathTextBox" Grid.Column="0" Margin="0,0,5,0"/>
+                                <Button x:Name="BrowseButton" Grid.Column="1" Classes="subtle" Content="📂" Width="36" Height="36" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Footer Buttons -->
+                <Border Grid.Row="2" Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,0" Padding="20,15" CornerRadius="0,0,16,16">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                        <Button x:Name="CancelButton" Classes="ghost" Content="Отмена" Width="100" HorizontalContentAlignment="Center"/>
+                        <Button x:Name="CreateButton" Classes="accent" Content="Создать" Width="120" HorizontalContentAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

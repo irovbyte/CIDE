@@ -1,0 +1,101 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:pm="clr-namespace:CIDE.PageModels"
+        x:Class="CIDE.Views.SshConnectionDialog"
+        x:DataType="pm:SshConnectionViewModel"
+        Title="Подключение по SSH"
+        Width="650" Height="450"
+        WindowStartupLocation="CenterOwner"
+        Background="Transparent"
+        SystemDecorations="None"
+        ShowInTaskbar="False">
+
+    <Grid Classes="windowFlyIn">
+        <!-- Main Glass Panel -->
+        <Border Background="{DynamicResource BgSurface}" 
+                BorderBrush="{DynamicResource BorderSubtle}" 
+                BorderThickness="1" 
+                CornerRadius="16" 
+                Margin="20"
+                BoxShadow="0 20 50 0 #40000000">
+
+            <Grid RowDefinitions="Auto, *, Auto">
+                
+                <!-- Custom Draggable TitleBar -->
+                <Border x:Name="TitleBarBorder" Grid.Row="0" Background="Transparent" CornerRadius="16,16,0,0">
+                    <Grid Margin="20,15,20,10">
+                        <TextBlock Text="Удаленное подключение" FontSize="20" FontWeight="Bold" VerticalAlignment="Center">
+                            <TextBlock.Foreground>
+                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                                    <GradientStop Offset="0" Color="#9C27B0"/>
+                                    <GradientStop Offset="1" Color="#E040FB"/>
+                                </LinearGradientBrush>
+                            </TextBlock.Foreground>
+                        </TextBlock>
+                    </Grid>
+                </Border>
+
+                <!-- Content -->
+                <Grid Grid.Row="1" ColumnDefinitions="*, *" Margin="20,0,20,20">
+                    <!-- Left: Saved Connections -->
+                    <Border Grid.Column="0" Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="12" Margin="0,0,10,0" Padding="15">
+                        <Grid RowDefinitions="Auto, *">
+                            <TextBlock Grid.Row="0" Text="Сохраненные" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource FgPrimary}" Margin="0,0,0,10"/>
+                            <ListBox Grid.Row="1" ItemsSource="{Binding Connections}" SelectedItem="{Binding SelectedConnection}" Background="Transparent" Foreground="{DynamicResource FgPrimary}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid ColumnDefinitions="*, Auto" Background="Transparent">
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="{DynamicResource FgPrimary}"/>
+                                                <TextBlock Text="{Binding Host}" Foreground="{DynamicResource FgSecondary}" FontSize="12"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Classes="subtle" Content="✕" Click="Delete_Click" VerticalAlignment="Center" Foreground="{DynamicResource FgSecondary}"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <!-- Right: Edit / New Connection -->
+                    <Border Grid.Column="1" Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="12" Margin="10,0,0,0" Padding="20">
+                        <StackPanel Spacing="15" DataContext="{Binding SelectedConnection}">
+                            <TextBlock Text="Настройки" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource FgPrimary}" Margin="0,0,0,5"/>
+                            
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Имя" Foreground="{DynamicResource FgSecondary}" FontSize="12"/>
+                                <TextBox Text="{Binding Name}" Watermark="Мой сервер" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Хост (IP или домен)" Foreground="{DynamicResource FgSecondary}" FontSize="12"/>
+                                <TextBox Text="{Binding Host}" Watermark="192.168.1.1" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Порт" Foreground="{DynamicResource FgSecondary}" FontSize="12"/>
+                                <TextBox Text="{Binding Port}" Watermark="22" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Имя пользователя" Foreground="{DynamicResource FgSecondary}" FontSize="12"/>
+                                <TextBox Text="{Binding Username}" Watermark="root" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Пароль" Foreground="{DynamicResource FgSecondary}" FontSize="12"/>
+                                <TextBox Text="{Binding Password}" PasswordChar="•" />
+                            </StackPanel>
+                            
+                            <Button Content="+ Новый" Command="{Binding $parent[Window].((pm:SshConnectionViewModel)DataContext).CreateNewConnectionCommand}" Classes="ghost" HorizontalAlignment="Right" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Footer Buttons -->
+                <Border Grid.Row="2" Background="{DynamicResource BgInput}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,0" Padding="20,15" CornerRadius="0,0,16,16">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                        <Button Classes="ghost" Content="Отмена" Click="Cancel_Click" Width="100" HorizontalContentAlignment="Center"/>
+                        <Button Classes="accent" Content="Подключиться" Click="Connect_Click" Width="130" HorizontalContentAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

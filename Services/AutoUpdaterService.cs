@@ -93,7 +93,6 @@ public static class AutoUpdaterService
 
                     onProgress("Обновление установлено. Перезапуск...");
                     await Task.Delay(1000);
-
                     _ = Process.Start(new ProcessStartInfo
                     {
                         FileName = currentExe,

@@ -2,9 +2,13 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using CIDE.Models;
+
 namespace CIDE.Services;
 
 [JsonSerializable(typeof(SettingsService))]
+[JsonSerializable(typeof(SshConnectionInfo))]
+[JsonSerializable(typeof(List<SshConnectionInfo>))]
 internal sealed partial class SettingsJsonContext : JsonSerializerContext
 {
 }
@@ -37,6 +41,7 @@ public partial class SettingsService : ObservableObject
     [ObservableProperty]
     public partial long LastUpdateId { get; set; } = 0;
     public List<string> RecentWorkspaces { get; set; } = [];
+    public List<SshConnectionInfo> SavedSshConnections { get; set; } = [];
 
     public SettingsService()
     {

@@ -13,6 +13,10 @@ public interface IFileSystemProvider
     public Task<bool> FileExistsAsync(string path);
     public Task<IEnumerable<FileNodeData>> GetDirectoriesAsync(string path);
     public Task<IEnumerable<FileNodeData>> GetFilesAsync(string path);
+    public Task CreateFileAsync(string path);
+    public Task CreateDirectoryAsync(string path);
+    public Task DeleteAsync(string path, bool isDirectory);
+    public Task RenameAsync(string oldPath, string newPath);
 }
 
 public class FileNodeData
@@ -51,11 +55,50 @@ public class LocalFileSystemProvider : IFileSystemProvider
         var dir = new DirectoryInfo(path);
         if (!dir.Exists)
         {
+            return Task.FromResult<IEnumerable<FileNodeData>>([]);
         }
 
         var files = dir.GetFiles()
             .OrderBy(f => f.Name)
             .Select(f => new FileNodeData { Name = f.Name, FullPath = f.FullName });
         return Task.FromResult<IEnumerable<FileNodeData>>(files);
+    }
+
+    public Task CreateFileAsync(string path)
+    {
+        File.Create(path).Dispose();
+        return Task.CompletedTask;
+    }
+
+    public Task CreateDirectoryAsync(string path)
+    {
+        Directory.CreateDirectory(path);
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAsync(string path, bool isDirectory)
+    {
+        if (isDirectory)
+        {
+            Directory.Delete(path, true);
+        }
+        else
+        {
+            File.Delete(path);
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task RenameAsync(string oldPath, string newPath)
+    {
+        if (Directory.Exists(oldPath))
+        {
+            Directory.Move(oldPath, newPath);
+        }
+        else if (File.Exists(oldPath))
+        {
+            File.Move(oldPath, newPath);
+        }
+        return Task.CompletedTask;
     }
 }

@@ -1,0 +1,60 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CIDE.Views.ServerLoadWindow"
+        Title="Нагрузка сервера"
+        Width="400" Height="250"
+        WindowStartupLocation="CenterOwner"
+        Background="Transparent"
+        SystemDecorations="None"
+        ShowInTaskbar="False">
+
+    <Grid Classes="windowFlyIn">
+        <!-- Main Glass Panel -->
+        <Border Background="{DynamicResource BgSurface}" 
+                BorderBrush="{DynamicResource BorderSubtle}" 
+                BorderThickness="1" 
+                CornerRadius="16" 
+                Margin="20"
+                BoxShadow="0 20 50 0 #40000000">
+
+            <Grid RowDefinitions="Auto, *">
+                
+                <!-- Custom Draggable TitleBar -->
+                <Border x:Name="TitleBarBorder" Grid.Row="0" Background="Transparent" CornerRadius="16,16,0,0">
+                    <Grid Margin="20,15,20,10" ColumnDefinitions="*, Auto">
+                        <TextBlock Grid.Column="0" Text="Нагрузка сервера" FontSize="18" FontWeight="Bold" VerticalAlignment="Center">
+                            <TextBlock.Foreground>
+                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                                    <GradientStop Offset="0" Color="#9C27B0"/>
+                                    <GradientStop Offset="1" Color="#E040FB"/>
+                                </LinearGradientBrush>
+                            </TextBlock.Foreground>
+                        </TextBlock>
+                        <Button x:Name="CloseButton" Grid.Column="1" Classes="subtle" Content="✕" Foreground="{DynamicResource FgSecondary}" Padding="6,2" CornerRadius="4" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
+                <!-- Content -->
+                <StackPanel Grid.Row="1" Spacing="20" Margin="20,10,20,20">
+                    
+                    <StackPanel Spacing="5">
+                        <Grid>
+                            <TextBlock Text="CPU" Foreground="{DynamicResource FgSecondary}" FontSize="13" HorizontalAlignment="Left" />
+                            <TextBlock x:Name="CpuText" Text="Загрузка..." Foreground="{DynamicResource FgPrimary}" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" />
+                        </Grid>
+                        <ProgressBar x:Name="CpuProgress" Minimum="0" Maximum="100" Height="8" CornerRadius="4" Foreground="{DynamicResource Accent}" Background="{DynamicResource BgInput}"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <Grid>
+                            <TextBlock Text="RAM" Foreground="{DynamicResource FgSecondary}" FontSize="13" HorizontalAlignment="Left" />
+                            <TextBlock x:Name="RamText" Text="Загрузка..." Foreground="{DynamicResource FgPrimary}" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" />
+                        </Grid>
+                        <ProgressBar x:Name="RamProgress" Minimum="0" Maximum="100" Height="8" CornerRadius="4" Foreground="#FF5555" Background="{DynamicResource BgInput}"/>
+                    </StackPanel>
+                    
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

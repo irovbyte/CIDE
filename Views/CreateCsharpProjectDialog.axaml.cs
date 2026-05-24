@@ -67,6 +67,18 @@ public partial class CreateCsharpProjectDialog : Window
         CancelButton.Click += (s, e) => Close();
         CreateButton.Click += CreateButton_Click;
 
+        var titleBar = this.FindControl<Avalonia.Controls.Border>("TitleBarBorder");
+        if (titleBar != null)
+        {
+            titleBar.PointerPressed += (s, e) =>
+            {
+                if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+                {
+                    BeginMoveDrag(e);
+                }
+            };
+        }
+
         ProjectNameTextBox.TextChanged += (s, e) =>
         {
             if (!SameFolderCheckBox.IsChecked.GetValueOrDefault())

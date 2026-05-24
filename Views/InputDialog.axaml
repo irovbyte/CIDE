@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CIDE.Views.InputDialog"
+        Width="400" Height="200"
+        WindowStartupLocation="CenterOwner"
+        Background="Transparent"
+        SystemDecorations="None"
+        ShowInTaskbar="False">
+    
+    <Grid Classes="windowFlyIn">
+        <Border Background="{DynamicResource BgSurface}" 
+                BorderBrush="{DynamicResource BorderSubtle}" 
+                BorderThickness="1" 
+                CornerRadius="12" 
+                Margin="10"
+                BoxShadow="0 10 30 0 #40000000">
+            <Grid RowDefinitions="Auto, *, Auto" Margin="20">
+                <TextBlock Grid.Row="0" x:Name="TitleBlock" Text="Ввод" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AccentLight}" Margin="0,0,0,10"/>
+                
+                <StackPanel Grid.Row="1" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock x:Name="MessageBlock" Text="Введите значение:" Foreground="{DynamicResource FgPrimary}" TextWrapping="Wrap"/>
+                    <TextBox x:Name="InputBox" Classes="field" FontSize="14" Padding="10,6" KeyDown="InputBox_KeyDown"/>
+                </StackPanel>
+                
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,15,0,0">
+                    <Button Classes="ghost" Content="Отмена" Click="Cancel_Click" Width="100" HorizontalContentAlignment="Center"/>
+                    <Button Classes="accent" Content="ОК" Click="Ok_Click" Width="100" HorizontalContentAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
