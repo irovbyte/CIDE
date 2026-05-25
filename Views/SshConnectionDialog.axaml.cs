@@ -14,17 +14,14 @@ public partial class SshConnectionDialog : Window
         InitializeComponent();
         _viewModel = new SshConnectionViewModel();
         DataContext = _viewModel;
-        var titleBar = this.FindControl<Avalonia.Controls.Border>("TitleBarBorder");
-        if (titleBar != null)
-        {
-            titleBar.PointerPressed += (s, e) =>
+        var titleBar = this.FindControl<Border>("TitleBarBorder");
+        titleBar?.PointerPressed += (s, e) =>
             {
                 if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
                 {
                     BeginMoveDrag(e);
                 }
             };
-        }
     }
 
     private void Connect_Click(object? sender, RoutedEventArgs e)
@@ -44,8 +41,5 @@ public partial class SshConnectionDialog : Window
         }
     }
 
-    private void Cancel_Click(object? sender, RoutedEventArgs e)
-    {
-        Close(null);
-    }
+    private void Cancel_Click(object? sender, RoutedEventArgs e) => Close(null);
 }

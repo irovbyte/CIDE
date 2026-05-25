@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
@@ -7,7 +8,6 @@ using Avalonia.Media;
 using Avalonia.Media.Transformation;
 using Avalonia.Styling;
 using Avalonia.Threading;
-using Avalonia;
 namespace CIDE.Helpers;
 
 public static class AnimationHelper
@@ -106,9 +106,9 @@ public static class AnimationHelper
         var sw = System.Diagnostics.Stopwatch.StartNew();
         while (sw.ElapsedMilliseconds < durationMs)
         {
-            double progress = (double)sw.ElapsedMilliseconds / durationMs;
-            double eased = easing.Ease(progress);
-            double current = start + (end - start) * eased;
+            var progress = (double)sw.ElapsedMilliseconds / durationMs;
+            var eased = easing.Ease(progress);
+            var current = start + ((end - start) * eased);
             await Dispatcher.UIThread.InvokeAsync(() => setter(current));
             await Task.Delay(10);
         }
@@ -116,25 +116,25 @@ public static class AnimationHelper
     }
     public static Task AnimateHeightAsync(this RowDefinition row, double targetHeight, int durationMs = 350)
     {
-        double startHeight = row.Height.IsAbsolute ? row.Height.Value : 0;
+        var startHeight = row.Height.IsAbsolute ? row.Height.Value : 0;
         return AnimateValueAsync(startHeight, targetHeight, durationMs, new QuarticEaseInOut(),
             val => row.Height = new GridLength(val, GridUnitType.Pixel));
     }
     public static Task AnimateWidthAsync(this ColumnDefinition col, double targetWidth, int durationMs = 350)
     {
-        double startWidth = col.Width.IsAbsolute ? col.Width.Value : 0;
+        var startWidth = col.Width.IsAbsolute ? col.Width.Value : 0;
         return AnimateValueAsync(startWidth, targetWidth, durationMs, new QuarticEaseInOut(),
             val => col.Width = new GridLength(val, GridUnitType.Pixel));
     }
     public static Task AnimateHeightAsync(this Control control, double targetHeight, int durationMs = 350)
     {
-        double startHeight = double.IsNaN(control.Height) ? control.Bounds.Height : control.Height;
+        var startHeight = double.IsNaN(control.Height) ? control.Bounds.Height : control.Height;
         return AnimateValueAsync(startHeight, targetHeight, durationMs, new QuarticEaseInOut(),
             val => control.Height = val);
     }
     public static Task AnimateWidthAsync(this Control control, double targetWidth, int durationMs = 350)
     {
-        double startWidth = double.IsNaN(control.Width) ? control.Bounds.Width : control.Width;
+        var startWidth = double.IsNaN(control.Width) ? control.Bounds.Width : control.Width;
         return AnimateValueAsync(startWidth, targetWidth, durationMs, new QuarticEaseInOut(),
             val => control.Width = val);
     }

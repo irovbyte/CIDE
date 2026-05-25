@@ -7,7 +7,7 @@
         Width="650" Height="450"
         WindowStartupLocation="CenterOwner"
         Background="Transparent"
-        SystemDecorations="None"
+        WindowDecorations="None"
         ShowInTaskbar="False">
 
     <Grid Classes="windowFlyIn">
@@ -64,19 +64,19 @@
                             
                             <StackPanel Spacing="4">
                                 <TextBlock Text="Имя" Foreground="{DynamicResource FgSecondary}" FontSize="12"/>
-                                <TextBox Text="{Binding Name}" Watermark="Мой сервер" />
+                                <TextBox Text="{Binding Name}" PlaceholderText="Мой сервер" />
                             </StackPanel>
                             <StackPanel Spacing="4">
                                 <TextBlock Text="Хост (IP или домен)" Foreground="{DynamicResource FgSecondary}" FontSize="12"/>
-                                <TextBox Text="{Binding Host}" Watermark="192.168.1.1" />
+                                <TextBox Text="{Binding Host}" PlaceholderText="192.168.1.1" />
                             </StackPanel>
                             <StackPanel Spacing="4">
                                 <TextBlock Text="Порт" Foreground="{DynamicResource FgSecondary}" FontSize="12"/>
-                                <TextBox Text="{Binding Port}" Watermark="22" />
+                                <TextBox Text="{Binding Port}" PlaceholderText="22" />
                             </StackPanel>
                             <StackPanel Spacing="4">
                                 <TextBlock Text="Имя пользователя" Foreground="{DynamicResource FgSecondary}" FontSize="12"/>
-                                <TextBox Text="{Binding Username}" Watermark="root" />
+                                <TextBox Text="{Binding Username}" PlaceholderText="root" />
                             </StackPanel>
                             <StackPanel Spacing="4">
                                 <TextBlock Text="Пароль" Foreground="{DynamicResource FgSecondary}" FontSize="12"/>

@@ -1,17 +1,49 @@
 using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
-using CommunityToolkit.Mvvm.ComponentModel;
-using AvaloniaEdit.Document;
 using Avalonia;
+using AvaloniaEdit.Document;
+using CommunityToolkit.Mvvm.ComponentModel;
 namespace CIDE.Models;
 
-public enum FileNodeKind { Solution, Project, Folder, File }
+public enum FileNodeKind { Solution, Project, Folder, File, WorkspaceRoot }
+
+public class WorkspaceRoot
+{
+    public string Name { get; set; } = "";
+    public IFileSystemProvider Provider { get; set; } = null!;
+    public FileNode RootNode { get; set; } = null!;
+}
+
+public class WorkspaceConfig
+{
+    public List<WorkspaceRootConfig> Roots { get; set; } = [];
+}
+
+public class WorkspaceRootConfig
+{
+    public string Name { get; set; } = "";
+    public string Type { get; set; } = "Local"; // Local, SSH, WSL
+    public string Path { get; set; } = "";
+    // Для SSH
+    public string? Host { get; set; }
+    public string? Username { get; set; }
+    public string? Password { get; set; }
+}
+
 public partial class FileNode : ObservableObject
 {
+    public WorkspaceRoot? Root { get; set; }
     public string Name { get; set; } = "";
     public string FullPath { get; set; } = "";
     public FileNodeKind Kind { get; set; }
     public ObservableCollection<FileNode> Children { get; set; } = [];
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsGitModified))]
+    [NotifyPropertyChangedFor(nameof(IsGitUntracked))]
+    public partial string GitStatus { get; set; } = "";
+
+    public bool IsGitModified => GitStatus == "M";
+    public bool IsGitUntracked => GitStatus == "U";
     [ObservableProperty]
     public partial bool IsExpanded { get; set; }
     public bool IsPopulated { get; set; }
@@ -23,6 +55,7 @@ public partial class FileNode : ObservableObject
     public static string GlyphColor => "#707080";
     public string IconText => Kind switch
     {
+        FileNodeKind.WorkspaceRoot => "\uE71B", // Or any suitable icon for root
         FileNodeKind.Solution => "\uE71B",
         FileNodeKind.Project => "\uE7B8",
         FileNodeKind.Folder => IsExpanded ? "\uE8E5" : "\uE8B7",
@@ -37,6 +70,7 @@ public partial class FileNode : ObservableObject
     };
     public string IconColor => Kind switch
     {
+        FileNodeKind.WorkspaceRoot => "#FFFFFF", // White for root
         FileNodeKind.Solution => "#C586C0",
         FileNodeKind.Project => "#4EC9B0",
         FileNodeKind.Folder => "#E8C56D",
@@ -58,6 +92,7 @@ public partial class FileNode : ObservableObject
 }
 public partial class EditorTab : ObservableObject
 {
+    public WorkspaceRoot? Root { get; set; }
     public string FilePath { get; set; } = "";
     [ObservableProperty]
     public partial string Content { get; set; } = "";
@@ -91,6 +126,7 @@ public class BuildError
     {
         BuildErrorSeverity.Error => "#FF5555",
         BuildErrorSeverity.Warning => "#FFB86C",
+        BuildErrorSeverity.Info => throw new NotImplementedException(),
         _ => "#8BE9FD"
     };
 }

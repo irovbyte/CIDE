@@ -102,7 +102,7 @@
                             <!-- Поиск -->
                             <TextBox x:Name="SearchBox"
                                      Grid.Column="0"
-                                     Watermark="Найти"
+                                     PlaceholderText="Найти"
                                      FontSize="13"
                                      Padding="8,4"
                                      CornerRadius="4"
@@ -149,7 +149,7 @@
                             <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto, Auto, Auto, Auto">
                                 <TextBox x:Name="SearchBox2"
                                          Grid.Column="0"
-                                         Watermark="Найти"
+                                         PlaceholderText="Найти"
                                          FontSize="13" Padding="8,4" CornerRadius="4"
                                          TextChanged="OnReplaceSearchChanged"/>
                                 <ToggleButton x:Name="MatchCase2Btn" Grid.Column="1"
@@ -167,7 +167,7 @@
                             <Grid Grid.Row="1" ColumnDefinitions="*, Auto, Auto">
                                 <TextBox x:Name="ReplaceBox"
                                          Grid.Column="0"
-                                         Watermark="Заменить"
+                                         PlaceholderText="Заменить"
                                          FontSize="13" Padding="8,4" CornerRadius="4"/>
                                 <Button Grid.Column="1" Content="Заменить"
                                         Margin="4,0,2,0" Padding="8,4" FontSize="12"
@@ -212,18 +212,26 @@
                             </Border>
 
                             <!-- Основной редактор -->
-                            <AvaloniaEdit:TextEditor
-                                    x:Name="CodeEditor"
-                                    Grid.Row="1"
-                                    Background="Transparent"
-                                    Foreground="{DynamicResource FgPrimary}"
-                                    FontFamily="Cascadia Code, Consolas, Courier New, monospace"
-                                    FontSize="15"
-                                    ShowLineNumbers="True"
-                                    WordWrap="False"
-                                    IsVisible="{Binding ActiveTab.IsText}"
-                                    TextChanged="CodeEditor_TextChanged"
-                                    Margin="8,8,0,8"/>
+                            <Grid Grid.Row="1" Margin="8,8,0,8" IsVisible="{Binding ActiveTab.IsText}">
+                                <AvaloniaEdit:TextEditor
+                                        x:Name="CodeEditor"
+                                        Background="Transparent"
+                                        Foreground="{DynamicResource FgPrimary}"
+                                        FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                                        FontSize="15"
+                                        ShowLineNumbers="True"
+                                        WordWrap="False"
+                                        TextChanged="CodeEditor_TextChanged"
+                                        ScrollViewer.IsScrollInertiaEnabled="True"/>
+                                
+                                <Border x:Name="SmoothCaret" Width="2" Background="{DynamicResource AccentLight}" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" RenderTransform="translate(0px,0px)">
+                                    <Border.Transitions>
+                                        <Transitions>
+                                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.08" Easing="CubicEaseOut"/>
+                                        </Transitions>
+                                    </Border.Transitions>
+                                </Border>
+                            </Grid>
                         </Grid>
 
                         <!-- Миникарта -->

@@ -2,8 +2,8 @@ using System;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
-using Iciclecreek.Terminal;
 using CIDE.PageModels;
+using Iciclecreek.Terminal;
 using Microsoft.Extensions.DependencyInjection;
 namespace CIDE.Views;
 
@@ -18,7 +18,9 @@ public partial class TerminalView : UserControl, IDisposable
         Loaded += (_, _) =>
         {
             if (!_isRunning)
+            {
                 StartProcess();
+            }
         };
     }
     [System.Diagnostics.DebuggerNonUserCode]
@@ -41,7 +43,13 @@ public partial class TerminalView : UserControl, IDisposable
                 workingDir = model.WorkspacePath;
             }
         }
-        if (CIDE.Services.WorkspaceService.CurrentProvider is CIDE.Services.SshFileSystemProvider sshProvider)
+        WorkspaceRoot? activeRoot = null;
+        if (DataContext is MainPageModel vmContext)
+        {
+            activeRoot = vmContext.ActiveTab?.Root ?? vmContext.SelectedNode?.Root;
+        }
+
+        if (activeRoot?.Provider is SshFileSystemProvider sshProvider)
         {
             var client = sshProvider.GetSshClient();
             if (client != null && client.ConnectionInfo != null)
@@ -57,7 +65,7 @@ public partial class TerminalView : UserControl, IDisposable
         {
             if (_terminal != null)
             {
-                TerminalContainer.Children.Remove(_terminal);
+                _ = TerminalContainer.Children.Remove(_terminal);
                 try
                 { _terminal.Kill(); }
                 catch { }
@@ -69,15 +77,15 @@ public partial class TerminalView : UserControl, IDisposable
                 FontSize = 14,
                 Foreground = Brush.Parse("#D4D4D4"),
                 Background = Brushes.Transparent,
-                Margin = new Avalonia.Thickness(4)
+                Margin = new Thickness(4)
             };
             TerminalContainer.Children.Add(_terminal);
             Dispatcher.UIThread.Post(() =>
             {
                 try
                 {
-                    _terminal.LaunchProcess(workingDir, exe, args);
-                    _terminal.Focus();
+                    _ = _terminal.LaunchProcess(workingDir, exe, args);
+                    _ = _terminal.Focus();
                     _isRunning = true;
                 }
                 catch (Exception ex)
@@ -95,14 +103,14 @@ public partial class TerminalView : UserControl, IDisposable
     public void Dispose()
     {
         if (_disposed)
+        {
             return;
+        }
+
         _disposed = true;
         try
         {
-            if (_terminal != null)
-            {
-                _terminal.Kill();
-            }
+            _terminal?.Kill();
         }
         catch { }
         GC.SuppressFinalize(this);

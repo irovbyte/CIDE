@@ -8,16 +8,13 @@ public partial class ConfirmDialog : Window
 {
     public bool Result { get; private set; }
 
-    public ConfirmDialog()
-    {
-        InitializeComponent();
-    }
+    public ConfirmDialog() => InitializeComponent();
 
     public ConfirmDialog(string title, string message) : this()
     {
         TitleBlock.Text = title;
         MessageBlock.Text = message;
-        this.KeyDown += (s, e) =>
+        KeyDown += (s, e) =>
         {
             if (e.Key == Key.Enter)
             {

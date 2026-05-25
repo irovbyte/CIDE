@@ -60,58 +60,53 @@ public static class WorkspaceService
         return null;
     }
 
-    private static IFileSystemProvider _currentProvider = new LocalFileSystemProvider();
-    public static IFileSystemProvider CurrentProvider
+    public static async Task<string> ReadFileAsync(IFileSystemProvider provider, string path) => await provider.ReadFileAsync(path);
+    public static async Task SaveFileAsync(IFileSystemProvider provider, string path, string content) => await provider.SaveFileAsync(path, content);
+    public static async Task CreateFileAsync(IFileSystemProvider provider, string path) => await provider.CreateFileAsync(path);
+    public static async Task CreateDirectoryAsync(IFileSystemProvider provider, string path) => await provider.CreateDirectoryAsync(path);
+    public static async Task RenameAsync(IFileSystemProvider provider, string oldPath, string newPath) => await provider.RenameAsync(oldPath, newPath);
+    public static async Task DeleteAsync(IFileSystemProvider provider, string path)
     {
-        get => _currentProvider;
-        set
+        var isDir = await provider.DirectoryExistsAsync(path);
+        await provider.DeleteAsync(path, isDir);
+    }
+
+    public static async Task<FileNode> BuildFolderTreeAsync(WorkspaceRoot rootModel, string rootPath, string? displayName = null, FileNodeKind kind = FileNodeKind.Folder)
+    {
+        var root = new FileNode
         {
-            if (_currentProvider is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
-            _currentProvider = value;
-        }
-    }
-
-    public static async Task<string> ReadFileAsync(string path) => await CurrentProvider.ReadFileAsync(path);
-    public static async Task SaveFileAsync(string path, string content) => await CurrentProvider.SaveFileAsync(path, content);
-    public static async Task CreateFileAsync(string path) => await CurrentProvider.CreateFileAsync(path);
-    public static async Task CreateDirectoryAsync(string path) => await CurrentProvider.CreateDirectoryAsync(path);
-    public static async Task RenameAsync(string oldPath, string newPath) => await CurrentProvider.RenameAsync(oldPath, newPath);
-    public static async Task DeleteAsync(string path)
-    {
-        bool isDir = await CurrentProvider.DirectoryExistsAsync(path);
-        await CurrentProvider.DeleteAsync(path, isDir);
-    }
-
-    public static async Task<FileNode> BuildFolderTreeAsync(string rootPath)
-    {
-        var root = new FileNode { Name = Path.GetFileName(rootPath), FullPath = rootPath, Kind = FileNodeKind.Folder, IsExpanded = true, Depth = 0, IsPopulated = true };
-        await FillChildrenAsync(root, rootPath, 1);
+            Root = rootModel,
+            Name = displayName ?? Path.GetFileName(rootPath),
+            FullPath = rootPath,
+            Kind = kind,
+            IsExpanded = true,
+            Depth = 0,
+            IsPopulated = true
+        };
+        await FillChildrenAsync(rootModel, root, rootPath, 1);
         return root;
     }
 
-    public static async Task FillChildrenAsync(FileNode parent, string dirPath, int depth)
+    public static async Task FillChildrenAsync(WorkspaceRoot rootModel, FileNode parent, string dirPath, int depth)
     {
-        if (!await CurrentProvider.DirectoryExistsAsync(dirPath))
+        if (!await rootModel.Provider.DirectoryExistsAsync(dirPath))
         {
             return;
         }
 
         parent.Children.Clear();
-        var dirs = await CurrentProvider.GetDirectoriesAsync(dirPath);
+        var dirs = await rootModel.Provider.GetDirectoriesAsync(dirPath);
         foreach (var sub in dirs)
         {
-            var node = new FileNode { Name = sub.Name, FullPath = sub.FullPath, Kind = FileNodeKind.Folder, Depth = depth, IsPopulated = false };
-            node.Children.Add(new FileNode { Name = "dummy", Kind = FileNodeKind.File });
+            var node = new FileNode { Root = rootModel, Name = sub.Name, FullPath = sub.FullPath, Kind = FileNodeKind.Folder, Depth = depth, IsPopulated = false };
+            node.Children.Add(new FileNode { Root = rootModel, Name = "dummy", Kind = FileNodeKind.File });
             parent.Children.Add(node);
         }
 
-        var files = await CurrentProvider.GetFilesAsync(dirPath);
+        var files = await rootModel.Provider.GetFilesAsync(dirPath);
         foreach (var f in files)
         {
-            parent.Children.Add(new FileNode { Name = f.Name, FullPath = f.FullPath, Kind = FileNodeKind.File, Depth = depth });
+            parent.Children.Add(new FileNode { Root = rootModel, Name = f.Name, FullPath = f.FullPath, Kind = FileNodeKind.File, Depth = depth });
         }
 
         parent.IsPopulated = true;

@@ -183,6 +183,11 @@
                             </StackPanel>
                             </Border>
                         </Grid>
+                        
+                        <!-- Git Clone Action -->
+                        <Button Classes="accent fluid" Content="Клонировать репозиторий (Git)" 
+                                Command="{Binding CloneRepositoryCommand}"
+                                HorizontalAlignment="Center" HorizontalContentAlignment="Center" Padding="40,15" Margin="0,20,0,0"/>
                     </StackPanel>
 
                     <!-- Bottom Panel: Recent Workspaces -->

@@ -1,27 +1,24 @@
 using System.Collections.ObjectModel;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
+using System.Linq;
 using CIDE.Models;
 using CIDE.Services;
-using System.Linq;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace CIDE.PageModels;
 
 public partial class SshConnectionViewModel : ObservableObject
 {
     [ObservableProperty]
-    private ObservableCollection<SshConnectionInfo> _connections = [];
+    public partial ObservableCollection<SshConnectionInfo> Connections { get; set; } = [];
 
     [ObservableProperty]
-    private SshConnectionInfo? _selectedConnection;
+    public partial SshConnectionInfo? SelectedConnection { get; set; }
 
     [ObservableProperty]
-    private bool _isPasswordVisible;
+    public partial bool IsPasswordVisible { get; set; }
 
-    public SshConnectionViewModel()
-    {
-        LoadConnections();
-    }
+    public SshConnectionViewModel() => LoadConnections();
 
     private void LoadConnections()
     {
@@ -56,8 +53,11 @@ public partial class SshConnectionViewModel : ObservableObject
     private void DeleteConnection(SshConnectionInfo? info)
     {
         if (info == null)
+        {
             return;
-        Connections.Remove(info);
+        }
+
+        _ = Connections.Remove(info);
         if (SelectedConnection == info)
         {
             SelectedConnection = Connections.FirstOrDefault();

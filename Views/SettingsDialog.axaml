@@ -6,7 +6,7 @@
         Width="550" Height="450"
         WindowStartupLocation="CenterOwner"
         Background="Transparent"
-        SystemDecorations="None"
+        WindowDecorations="None"
         ShowInTaskbar="False">
 
     <Grid Classes="windowFlyIn">

@@ -5,14 +5,14 @@ namespace CIDE.Services;
 
 public static class CompileService
 {
-    private static Process? _currentProcess;
+    private static Process? t_currentProcess;
 
     public static void KillCurrentProcess()
     {
-        if (_currentProcess != null && !_currentProcess.HasExited)
+        if (t_currentProcess != null && !t_currentProcess.HasExited)
         {
             try
-            { _currentProcess.Kill(true); }
+            { t_currentProcess.Kill(true); }
             catch { }
         }
     }
@@ -25,7 +25,10 @@ public static class CompileService
         {
             var makePath = Path.Combine(ToolchainService.MinGWDir, "bin", "mingw32-make.exe");
             if (!File.Exists(makePath))
+            {
                 makePath = "mingw32-make.exe";
+            }
+
             onOutput($"$ {makePath}\n");
             var result = await ExecuteProcessAsync(makePath, "", workspacePath, onOutput);
             if (result == 0)
@@ -33,13 +36,15 @@ public static class CompileService
                 onOutput($"\n[{DateTime.Now:HH:mm:ss}] Сборка завершена.\n");
             }
         }
-        else if (projectType == "C Project" || projectType == "C++ Project" || projectType == "C File" || projectType == "C++ File")
+        else if (projectType is "C Project" or "C++ Project" or "C File" or "C++ File")
         {
             var isCpp = projectType.Contains("C++");
             var compiler = isCpp ? "g++.exe" : "gcc.exe";
             var compilerPath = Path.Combine(ToolchainService.MinGWDir, "bin", compiler);
             if (!File.Exists(compilerPath))
+            {
                 compilerPath = compiler;
+            }
 
             var targetFiles = "";
             var outputExe = OperatingSystem.IsWindows() ? "app.exe" : "app";
@@ -57,7 +62,10 @@ public static class CompileService
                 targetFiles = string.Join(" ", files.Select(f => $"\"{f}\""));
                 var binDir = Path.Combine(workspacePath, "bin");
                 if (!Directory.Exists(binDir))
-                    Directory.CreateDirectory(binDir);
+                {
+                    _ = Directory.CreateDirectory(binDir);
+                }
+
                 outputExe = Path.Combine(binDir, OperatingSystem.IsWindows() ? "app.exe" : "app");
             }
             else
@@ -92,7 +100,7 @@ public static class CompileService
     {
         try
         {
-            _currentProcess = new Process
+            t_currentProcess = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
@@ -108,23 +116,25 @@ public static class CompileService
                 }
             };
 
-            _currentProcess.OutputDataReceived += (s, e) => { if (e.Data != null) { onOutput(e.Data + "\n"); } };
-            _currentProcess.ErrorDataReceived += (s, e) => { if (e.Data != null) { onOutput(e.Data + "\n"); } };
+            t_currentProcess.OutputDataReceived += (s, e) => { if (e.Data != null) { onOutput(e.Data + "\n"); } };
+            t_currentProcess.ErrorDataReceived += (s, e) => { if (e.Data != null) { onOutput(e.Data + "\n"); } };
 
-            _ = _currentProcess.Start();
-            _currentProcess.BeginOutputReadLine();
-            _currentProcess.BeginErrorReadLine();
+            _ = t_currentProcess.Start();
+            t_currentProcess.BeginOutputReadLine();
+            t_currentProcess.BeginErrorReadLine();
 
-            await _currentProcess.WaitForExitAsync();
-            int code = _currentProcess.ExitCode;
+            await t_currentProcess.WaitForExitAsync();
+            var code = t_currentProcess.ExitCode;
             onOutput($"\nПроцесс завершился с кодом {code}.\n");
-            _currentProcess = null;
+            t_currentProcess.Dispose();
+            t_currentProcess = null;
             return code;
         }
         catch (Exception ex)
         {
             onOutput($"\nОшибка запуска процесса: {ex.Message}\n");
-            _currentProcess = null;
+            t_currentProcess?.Dispose();
+            t_currentProcess = null;
             return -1;
         }
     }

@@ -1,12 +1,12 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using CIDE.Services;
-using System.IO;
-using System;
 using Avalonia.Threading;
-using System.Linq;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using CIDE.Services;
 
 namespace CIDE.Views;
 
@@ -67,17 +67,14 @@ public partial class CreateCsharpProjectDialog : Window
         CancelButton.Click += (s, e) => Close();
         CreateButton.Click += CreateButton_Click;
 
-        var titleBar = this.FindControl<Avalonia.Controls.Border>("TitleBarBorder");
-        if (titleBar != null)
-        {
-            titleBar.PointerPressed += (s, e) =>
+        var titleBar = this.FindControl<Border>("TitleBarBorder");
+        titleBar?.PointerPressed += (s, e) =>
             {
                 if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
                 {
                     BeginMoveDrag(e);
                 }
             };
-        }
 
         ProjectNameTextBox.TextChanged += (s, e) =>
         {

@@ -8,19 +8,16 @@ public partial class InputDialog : Window
 {
     public string? Result { get; private set; }
 
-    public InputDialog()
-    {
-        InitializeComponent();
-    }
+    public InputDialog() => InitializeComponent();
 
     public InputDialog(string title, string message, string defaultText = "") : this()
     {
         TitleBlock.Text = title;
         MessageBlock.Text = message;
         InputBox.Text = defaultText;
-        this.Opened += (s, e) =>
+        Opened += (s, e) =>
         {
-            InputBox.Focus();
+            _ = InputBox.Focus();
             if (!string.IsNullOrEmpty(defaultText))
             {
                 InputBox.SelectAll();

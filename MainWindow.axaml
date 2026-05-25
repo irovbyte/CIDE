@@ -126,20 +126,39 @@
                                 </StackPanel>
                             </Grid>
                         </Border>
+                        
+                        <!-- Оверлей загрузки (Glassmorphism) -->
+                        <Border Grid.RowSpan="3" Background="#99000000" IsVisible="{Binding IsBusy}" ZIndex="100">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
+                                <ProgressBar IsIndeterminate="True" Width="200" Height="4" Foreground="#9061F9" Background="#339061F9" />
+                                <TextBlock Text="{Binding BusyText}" FontSize="16" Foreground="White" FontWeight="Medium" HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+
                     </Grid>
                 </Grid>
 
-                <!-- Status Bar (Properly rounded and attached to bottom) -->
-                <Border Grid.Row="1" Background="#7C3AED" CornerRadius="0">
+                <!-- Status Bar -->
+                <Border Grid.Row="1" Background="{Binding RemoteStatusColor}" CornerRadius="0">
                     <Grid ColumnDefinitions="Auto, Auto, *, Auto, Auto, Auto" Margin="14,0">
-                        <Border Grid.Column="0" Background="#9061F9" CornerRadius="2" Padding="6,0" VerticalAlignment="Center" Margin="0,2">
-                            <TextBlock Text="{Binding ProjectTypeDisplay}" Foreground="White" FontSize="10" FontWeight="Bold" />
+                        
+                        <!-- Левая кнопка статуса (Локально / WSL / SSH) -->
+                        <!-- Мы используем Margin="0", а цвет берем из модели, но чуть темнее -->
+                        <Border Grid.Column="0" Background="#33000000" CornerRadius="2" Padding="8,2" VerticalAlignment="Center" Margin="0,2">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="&gt;&lt;" Foreground="White" FontSize="10" FontWeight="Bold" FontFamily="Consolas"/>
+                                <TextBlock Text="{Binding RemoteStatusText}" Foreground="White" FontSize="10" FontWeight="Bold" />
+                            </StackPanel>
                         </Border>
-                        <TextBlock Grid.Column="1" Text="{Binding StatusText}" Foreground="White" Opacity="0.9" FontSize="11" VerticalAlignment="Center" Margin="16,0,0,0" />
                         
-                        <!-- ДОБАВИТЬ ЭТУ СТРОКУ (Отображение курсора) -->
+                        <!-- Выбранный профиль -->
+                        <Border Grid.Column="1" Background="#33000000" CornerRadius="2" Padding="6,2" VerticalAlignment="Center" Margin="8,2">
+                            <TextBlock Text="{Binding SelectedBuildProfile}" Foreground="White" FontSize="10" FontWeight="Bold" />
+                        </Border>
+
+                        <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="White" Opacity="0.9" FontSize="11" VerticalAlignment="Center" Margin="16,0,0,0" />
+                        
                         <TextBlock Grid.Column="3" Text="{Binding CursorPosition}" Foreground="#E0D4FC" FontSize="11" VerticalAlignment="Center" Margin="0,0,16,0" />
-                        
                         <TextBlock Grid.Column="4" Text="LF | UTF-8" Foreground="#E0D4FC" FontSize="11" VerticalAlignment="Center" Margin="0,0,16,0" />
                         <TextBlock Grid.Column="5" Text="CIDE Avalonia v2.0" Foreground="#E0D4FC" FontSize="11" VerticalAlignment="Center" />
                     </Grid>

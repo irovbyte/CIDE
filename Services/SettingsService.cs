@@ -1,8 +1,7 @@
-using CommunityToolkit.Mvvm.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-
 using CIDE.Models;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace CIDE.Services;
 
@@ -18,8 +17,7 @@ public partial class SettingsService : ObservableObject
     private static readonly string t_settingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
     private static readonly JsonSerializerOptions t_jsonOptions = new() { WriteIndented = true, TypeInfoResolver = SettingsJsonContext.Default };
 
-    private static SettingsService? t_instance;
-    public static SettingsService Instance => t_instance ??= Load();
+    public static SettingsService Instance => field ??= Load();
 
     [ObservableProperty]
     public partial bool ShowMinimap { get; set; } = true;
@@ -73,7 +71,9 @@ public partial class SettingsService : ObservableObject
         try
         {
             var json = JsonSerializer.Serialize(this, t_jsonOptions);
-            File.WriteAllText(t_settingsFilePath, json);
+            var tempPath = t_settingsFilePath + ".tmp";
+            File.WriteAllText(tempPath, json);
+            File.Move(tempPath, t_settingsFilePath, overwrite: true);
         }
         catch (Exception ex)
         {

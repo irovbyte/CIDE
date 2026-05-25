@@ -25,16 +25,13 @@ public partial class SettingsDialog : Window
         ClangFormatPathTextBox.TextChanged += (s, e) => settings.ClangFormatPath = ClangFormatPathTextBox.Text ?? "";
 
         CloseButton.Click += (s, e) => Close();
-        var titleBar = this.FindControl<Avalonia.Controls.Border>("TitleBarBorder");
-        if (titleBar != null)
-        {
-            titleBar.PointerPressed += (s, e) =>
+        var titleBar = this.FindControl<Border>("TitleBarBorder");
+        titleBar?.PointerPressed += (s, e) =>
             {
                 if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
                 {
                     BeginMoveDrag(e);
                 }
             };
-        }
     }
 }

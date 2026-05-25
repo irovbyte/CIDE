@@ -63,7 +63,7 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
     {
         if (_sftpClient == null || !_sftpClient.IsConnected)
         {
-            await Task.Run(() => Connect());
+            await Task.Run(Connect);
         }
     }
     public SshClient? GetSshClient() => _sshClient;
@@ -132,7 +132,10 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
         await EnsureConnectedAsync();
         return await Task.Run(() =>
         {
-            if (!_sftpClient!.Exists(path)) return [];
+            if (!_sftpClient!.Exists(path))
+            {
+                return [];
+            }
 
             var files = _sftpClient.ListDirectory(path);
             return files
@@ -147,7 +150,10 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
         await EnsureConnectedAsync();
         return await Task.Run(() =>
         {
-            if (!_sftpClient!.Exists(path)) return [];
+            if (!_sftpClient!.Exists(path))
+            {
+                return [];
+            }
 
             var files = _sftpClient.ListDirectory(path);
             return files
@@ -160,19 +166,13 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
     public async Task CreateFileAsync(string path)
     {
         await EnsureConnectedAsync();
-        await Task.Run(() =>
-        {
-            _sftpClient!.Create(path).Dispose();
-        });
+        await Task.Run(() => _sftpClient!.Create(path).Dispose());
     }
 
     public async Task CreateDirectoryAsync(string path)
     {
         await EnsureConnectedAsync();
-        await Task.Run(() =>
-        {
-            _sftpClient!.CreateDirectory(path);
-        });
+        await Task.Run(() => _sftpClient!.CreateDirectory(path));
     }
 
     public async Task DeleteAsync(string path, bool isDirectory)
@@ -182,7 +182,7 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
         {
             if (isDirectory)
             {
-                _sshClient!.RunCommand($"rm -rf \"{path}\"");
+                _ = _sshClient!.RunCommand($"rm -rf \"{path}\"");
             }
             else
             {
@@ -194,15 +194,16 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
     public async Task RenameAsync(string oldPath, string newPath)
     {
         await EnsureConnectedAsync();
-        await Task.Run(() =>
-        {
-            _sftpClient!.RenameFile(oldPath, newPath);
-        });
+        await Task.Run(() => _sftpClient!.RenameFile(oldPath, newPath));
     }
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
+
         _disposed = true;
         _sftpClient?.Dispose();
         _sshClient?.Dispose();

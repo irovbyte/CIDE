@@ -1,12 +1,12 @@
 using System;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Threading;
-using CIDE.Services;
 using CIDE.Models;
+using CIDE.Services;
 using Renci.SshNet;
-using System.Text.RegularExpressions;
 
 namespace CIDE.Views;
 
@@ -24,31 +24,26 @@ public partial class ServerLoadWindow : Window
         InitializeComponent();
         Closed += (s, e) => _isRunning = false;
         var closeBtn = this.FindControl<Button>("CloseButton");
-        if (closeBtn != null)
-        {
-            closeBtn.Click += (s, e) => Close();
-        }
-        var titleBar = this.FindControl<Avalonia.Controls.Border>("TitleBarBorder");
-        if (titleBar != null)
-        {
-            titleBar.PointerPressed += (s, e) =>
+        closeBtn?.Click += (s, e) => Close();
+        var titleBar = this.FindControl<Border>("TitleBarBorder");
+        titleBar?.PointerPressed += (s, e) =>
             {
                 if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
                 {
                     BeginMoveDrag(e);
                 }
             };
-        }
-        Task.Run(PollStatsLoop);
+        _ = Task.Run(PollStatsLoopAsync);
     }
 
-    private async Task PollStatsLoop()
+    private async Task PollStatsLoopAsync()
     {
         while (_isRunning)
         {
             try
             {
-                if (WorkspaceService.CurrentProvider is SshFileSystemProvider sshProvider)
+                var sshRoot = (DataContext as MainPageModel)?.WorkspaceRoots.FirstOrDefault(r => r.Provider is SshFileSystemProvider);
+                if (sshRoot?.Provider is SshFileSystemProvider sshProvider)
                 {
                     var client = sshProvider.GetSshClient();
                     if (client != null && client.IsConnected)
@@ -92,7 +87,9 @@ public partial class ServerLoadWindow : Window
         {
             var parts = output.Split(["---"], StringSplitOptions.None);
             if (parts.Length < 2)
+            {
                 return;
+            }
 
             var stat = parts[0];
             var meminfo = parts[1];
@@ -101,13 +98,13 @@ public partial class ServerLoadWindow : Window
             double cpuUsage = 0;
             if (cpuMatch.Success)
             {
-                long user = long.Parse(cpuMatch.Groups[1].Value);
-                long nice = long.Parse(cpuMatch.Groups[2].Value);
-                long system = long.Parse(cpuMatch.Groups[3].Value);
-                long idle = long.Parse(cpuMatch.Groups[4].Value);
+                var user = long.Parse(cpuMatch.Groups[1].Value);
+                var nice = long.Parse(cpuMatch.Groups[2].Value);
+                var system = long.Parse(cpuMatch.Groups[3].Value);
+                var idle = long.Parse(cpuMatch.Groups[4].Value);
 
-                long idleTime = idle;
-                long totalTime = user + nice + system + idle;
+                var idleTime = idle;
+                var totalTime = user + nice + system + idle;
 
                 if (_prevTotalTime > 0)
                 {
@@ -129,12 +126,12 @@ public partial class ServerLoadWindow : Window
 
             if (memTotalMatch.Success && memFreeMatch.Success)
             {
-                long total = long.Parse(memTotalMatch.Groups[1].Value);
-                long free = long.Parse(memFreeMatch.Groups[1].Value);
-                long buffers = buffersMatch.Success ? long.Parse(buffersMatch.Groups[1].Value) : 0;
-                long cached = cachedMatch.Success ? long.Parse(cachedMatch.Groups[1].Value) : 0;
+                var total = long.Parse(memTotalMatch.Groups[1].Value);
+                var free = long.Parse(memFreeMatch.Groups[1].Value);
+                var buffers = buffersMatch.Success ? long.Parse(buffersMatch.Groups[1].Value) : 0;
+                var cached = cachedMatch.Success ? long.Parse(cachedMatch.Groups[1].Value) : 0;
 
-                long used = total - free - buffers - cached;
+                var used = total - free - buffers - cached;
                 memUsage = (double)used / total * 100.0;
                 memTotalMb = total / 1024.0;
                 memUsedMb = used / 1024.0;

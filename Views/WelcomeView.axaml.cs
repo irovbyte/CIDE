@@ -9,10 +9,10 @@ public partial class WelcomeView : UserControl
     public WelcomeView()
     {
         InitializeComponent();
-        AddHandler(PointerPressedEvent, OnPointerPressed, Avalonia.Interactivity.RoutingStrategies.Bubble, true);
+        AddHandler(PointerPressedEvent, OnPointerPressedAsync, Avalonia.Interactivity.RoutingStrategies.Bubble, true);
     }
 
-    private async void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    private async void OnPointerPressedAsync(object? sender, PointerPressedEventArgs e)
     {
         if (e.Source is Control control)
         {

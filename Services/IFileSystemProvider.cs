@@ -47,7 +47,7 @@ public class LocalFileSystemProvider : IFileSystemProvider
             .Where(d => !d.Name.StartsWith('.') && d.Name != "bin" && d.Name != "obj")
             .OrderBy(d => d.Name)
             .Select(d => new FileNodeData { Name = d.Name, FullPath = d.FullName });
-        return Task.FromResult<IEnumerable<FileNodeData>>(dirs);
+        return Task.FromResult(dirs);
     }
 
     public Task<IEnumerable<FileNodeData>> GetFilesAsync(string path)
@@ -61,7 +61,7 @@ public class LocalFileSystemProvider : IFileSystemProvider
         var files = dir.GetFiles()
             .OrderBy(f => f.Name)
             .Select(f => new FileNodeData { Name = f.Name, FullPath = f.FullName });
-        return Task.FromResult<IEnumerable<FileNodeData>>(files);
+        return Task.FromResult(files);
     }
 
     public Task CreateFileAsync(string path)
@@ -72,7 +72,7 @@ public class LocalFileSystemProvider : IFileSystemProvider
 
     public Task CreateDirectoryAsync(string path)
     {
-        Directory.CreateDirectory(path);
+        _ = Directory.CreateDirectory(path);
         return Task.CompletedTask;
     }
 

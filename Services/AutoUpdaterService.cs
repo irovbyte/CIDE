@@ -33,18 +33,22 @@ internal sealed partial class UpdateJsonContext : JsonSerializerContext
 
 public static class AutoUpdaterService
 {
-    private const string CurrentVersion = "v1.0.0";
     private const string RepoUrl = "https://api.github.com/repos/irovbyte/CIDE/releases/latest";
+    private static readonly HttpClient t_httpClient = CreateHttpClient();
+
+    private static HttpClient CreateHttpClient()
+    {
+        var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("User-Agent", "CIDE-AutoUpdater");
+        return client;
+    }
 
     public static async Task CheckForUpdatesAsync(Action<string> onProgress)
     {
         try
         {
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("User-Agent", "CIDE-AutoUpdater");
-
             onProgress("Проверка обновлений...");
-            var release = await client.GetFromJsonAsync(RepoUrl, UpdateJsonContext.Default.GitHubRelease);
+            var release = await t_httpClient.GetFromJsonAsync(RepoUrl, UpdateJsonContext.Default.GitHubRelease);
 
             if (release != null && release.Id != SettingsService.Instance.LastUpdateId)
             {
@@ -65,7 +69,7 @@ public static class AutoUpdaterService
                 if (!string.IsNullOrEmpty(downloadUrl))
                 {
                     onProgress("Скачивание обновления...");
-                    using var stream = await client.GetStreamAsync(downloadUrl);
+                    using var stream = await t_httpClient.GetStreamAsync(downloadUrl);
                     var currentExe = Process.GetCurrentProcess().MainModule?.FileName;
                     if (string.IsNullOrEmpty(currentExe))
                     {

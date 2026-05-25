@@ -19,32 +19,43 @@ public partial class EditorView : UserControl
     private RegistryOptions? _registryOptions;
     private TextMate.Installation? _textMateInstallation;
     private TextMate.Installation? _minimapTextMateInstallation;
-    private Avalonia.Threading.DispatcherTimer? _autoSaveTimer;
-    private Avalonia.Threading.DispatcherTimer? _stickyScrollTimer;
+    private readonly Avalonia.Threading.DispatcherTimer? _autoSaveTimer;
+    private readonly Avalonia.Threading.DispatcherTimer? _stickyScrollTimer;
     private bool _isMinimapDragging;
-    private SearchPanel? _searchPanel;
-    private List<TextSegment> _searchResults = new();
+    private readonly List<TextSegment> _searchResults = [];
     private int _searchIndex = -1;
     private bool _replaceMode;
-    private readonly CIDE.Helpers.SearchHighlightTransformer _searchHighlightTransformer = new();
+    private readonly SearchHighlightTransformer _searchHighlightTransformer = new();
+    private readonly PasteHighlightTransformer _pasteTransformer = new();
+    private double _targetScrollY;
+    private bool _isSmoothScrolling;
+    private readonly Avalonia.Threading.DispatcherTimer? _renderTimer;
+
     public EditorView()
     {
         InitializeComponent();
         _autoSaveTimer = new Avalonia.Threading.DispatcherTimer
         { Interval = TimeSpan.FromSeconds(2) };
-        _autoSaveTimer.Tick += AutoSaveTimer_Tick;
+        _autoSaveTimer.Tick += AutoSaveTimerTickAsync;
         _stickyScrollTimer = new Avalonia.Threading.DispatcherTimer
         { Interval = TimeSpan.FromMilliseconds(80) };
         _stickyScrollTimer.Tick += StickyScrollTimer_Tick;
+        _renderTimer = new Avalonia.Threading.DispatcherTimer(
+            TimeSpan.FromMilliseconds(1000.0 / 120.0), // Поддержка до 120-144 Гц
+            Avalonia.Threading.DispatcherPriority.Render,
+            RenderTimer_Tick);
         SetupSyntaxHighlighting();
         SetupEditorOptions();
         SetupBracketHandling();
         CodeEditor.AddHandler(PointerWheelChangedEvent,
-            CodeEditorPointerWheelChanged, Avalonia.Interactivity.RoutingStrategies.Bubble);
+            CodeEditorPointerWheelChanged, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         CodeEditor.AddHandler(KeyDownEvent,
             CodeEditorKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        CodeEditor.TextArea.Caret.CaretBrush = Brushes.Transparent;
         CodeEditor.TextArea.Caret.PositionChanged += Caret_PositionChanged;
+        CodeEditor.TextArea.TextView.ScrollOffsetChanged += TextView_ScrollOffsetChanged;
         CodeEditor.TextArea.TextView.LineTransformers.Add(_searchHighlightTransformer);
+        CodeEditor.TextArea.TextView.LineTransformers.Add(_pasteTransformer);
         MinimapEditor.Document = CodeEditor.Document;
         CodeEditor.TemplateApplied += (s, e) =>
         {
@@ -72,8 +83,11 @@ public partial class EditorView : UserControl
         CodeEditor.Options.EnableEmailHyperlinks = false;
         CodeEditor.Options.IndentationSize = 4;
         CodeEditor.Options.ConvertTabsToSpaces = true;
+        CodeEditor.Options.EnableRectangularSelection = true;
         CodeEditor.ShowLineNumbers = true;
-        CodeEditor.TextArea.IndentationStrategy = new Helpers.SmartIndentationStrategy();
+        CodeEditor.TextArea.IndentationStrategy = new SmartIndentationStrategy();
+        CodeEditor.TextArea.SelectionCornerRadius = 3;
+        CodeEditor.TextArea.SelectionBrush = new SolidColorBrush(Color.FromArgb(80, 59, 130, 246));
     }
     private void SetupBracketHandling()
     {
@@ -119,7 +133,9 @@ public partial class EditorView : UserControl
     {
         if (e.PropertyName == nameof(MainPageModel.ActiveTab)
             && DataContext is MainPageModel vm)
+        {
             UpdateEditorFromTab(vm);
+        }
     }
     private EditorTab? _previousTab;
     private void UpdateEditorFromTab(MainPageModel vm)
@@ -129,10 +145,14 @@ public partial class EditorView : UserControl
         {
             if (_previousTab != null && CodeEditor.Document != null)
             {
+                _previousTab.Document?.Changed -= Document_Changed;
                 _previousTab.SavedCaretOffset = CodeEditor.CaretOffset;
                 var sv = CodeEditor.FindDescendantOfType<ScrollViewer>();
                 if (sv != null)
+                {
                     _previousTab.SavedScrollOffset = sv.Offset;
+                }
+
                 _previousTab.Content = CodeEditor.Document.Text;
             }
             if (vm.ActiveTab != null)
@@ -142,6 +162,7 @@ public partial class EditorView : UserControl
                     vm.ActiveTab.Document = new TextDocument(vm.ActiveTab.Content ?? string.Empty);
                 }
                 CodeEditor.Document = vm.ActiveTab.Document;
+                CodeEditor.Document.Changed += Document_Changed;
                 MinimapEditor.Document = vm.ActiveTab.Document;
                 SetLanguage(vm.ActiveTab.FilePath);
                 if (!string.IsNullOrEmpty(vm.WorkspacePath))
@@ -155,9 +176,8 @@ public partial class EditorView : UserControl
                 {
                     CodeEditor.CaretOffset = Math.Min(vm.ActiveTab.SavedCaretOffset, CodeEditor.Document.TextLength);
                     var sv = CodeEditor.FindDescendantOfType<ScrollViewer>();
-                    if (sv != null)
-                        sv.Offset = vm.ActiveTab.SavedScrollOffset;
-                    CodeEditor.Focus();
+                    _ = (sv?.Offset = vm.ActiveTab.SavedScrollOffset);
+                    _ = CodeEditor.Focus();
                 });
             }
             else
@@ -176,11 +196,17 @@ public partial class EditorView : UserControl
     {
         if (_textMateInstallation is null || _registryOptions is null
             || _minimapTextMateInstallation is null)
+        {
             return;
+        }
+
         var ext = Path.GetExtension(filePath);
         var lang = _registryOptions.GetLanguageByExtension(ext);
         if (lang is null)
+        {
             return;
+        }
+
         var scope = _registryOptions.GetScopeByLanguageId(lang.Id);
         _textMateInstallation.SetGrammar(scope);
         _minimapTextMateInstallation.SetGrammar(scope);
@@ -188,7 +214,10 @@ public partial class EditorView : UserControl
     private void CodeEditor_TextChanged(object? sender, EventArgs e)
     {
         if (_isUpdatingFromViewModel || DataContext is not MainPageModel vm || vm.ActiveTab is null)
+        {
             return;
+        }
+
         vm.ActiveTab.IsModified = true;
         if (SettingsService.Instance.AutoSave)
         {
@@ -196,9 +225,11 @@ public partial class EditorView : UserControl
             _autoSaveTimer?.Start();
         }
         if (SearchPanel?.IsVisible == true || ReplacePanel?.IsVisible == true)
+        {
             RunSearch();
+        }
     }
-    private async void AutoSaveTimer_Tick(object? sender, EventArgs e)
+    private async void AutoSaveTimerTickAsync(object? sender, EventArgs e)
     {
         _autoSaveTimer?.Stop();
         if (DataContext is MainPageModel vm && vm.ActiveTab?.IsModified == true)
@@ -207,7 +238,8 @@ public partial class EditorView : UserControl
             var filePath = vm.ActiveTab.FilePath;
             try
             {
-                await WorkspaceService.SaveFileAsync(filePath, textToSave);
+                var provider = vm.ActiveTab.Root?.Provider ?? new LocalFileSystemProvider();
+                await WorkspaceService.SaveFileAsync(provider, filePath, textToSave);
                 vm.ActiveTab.Content = textToSave;
                 vm.ActiveTab.IsModified = false;
                 vm.StatusText = $"✅ Автосохранено ({DateTime.Now:HH:mm:ss})";
@@ -264,7 +296,10 @@ public partial class EditorView : UserControl
         if (e.Key == Key.Tab && !ctrl && !shift)
         {
             if (CodeEditor.TextArea.Selection.IsEmpty)
+            {
                 return;
+            }
+
             IndentSelection();
             e.Handled = true;
             return;
@@ -283,7 +318,7 @@ public partial class EditorView : UserControl
             { MoveLineDown(); e.Handled = true; }
         }
     }
-    private static readonly Dictionary<char, char> _bracketPairs = new()
+    private static readonly Dictionary<char, char> t_bracketPairs = new()
     {
         { '(', ')' }, { '[', ']' }, { '{', '}' }, { '"', '"' }, { '\'', '\'' }
     };
@@ -291,7 +326,10 @@ public partial class EditorView : UserControl
     private void TextArea_TextEntering(object? sender, TextInputEventArgs e)
     {
         if (e.Text?.Length != 1)
+        {
             return;
+        }
+
         var ch = e.Text[0];
         if (ch == _pendingClose && _pendingClose != '\0')
         {
@@ -308,16 +346,24 @@ public partial class EditorView : UserControl
     private void TextArea_TextEntered(object? sender, TextInputEventArgs e)
     {
         if (e.Text?.Length != 1)
+        {
             return;
+        }
+
         var ch = e.Text[0];
-        if (!_bracketPairs.TryGetValue(ch, out var close))
+        if (!t_bracketPairs.TryGetValue(ch, out var close))
+        {
             return;
+        }
+
         var offset = CodeEditor.TextArea.Caret.Offset;
         if (offset < CodeEditor.Document.TextLength)
         {
             var next = CodeEditor.Document.GetCharAt(offset);
             if (!char.IsWhiteSpace(next) && next != '\n' && next != '\r')
+            {
                 return;
+            }
         }
         CodeEditor.Document.Insert(offset, close.ToString());
         CodeEditor.TextArea.Caret.Offset = offset;
@@ -331,18 +377,22 @@ public partial class EditorView : UserControl
             SearchPanel.IsVisible = false;
             ReplacePanel.IsVisible = true;
             _ = ReplacePanel.SlideAndFadeInAsync();
-            SearchBox2.Focus();
+            _ = SearchBox2.Focus();
             if (!CodeEditor.TextArea.Selection.IsEmpty)
+            {
                 SearchBox2.Text = CodeEditor.TextArea.Selection.GetText();
+            }
         }
         else
         {
             ReplacePanel.IsVisible = false;
             SearchPanel.IsVisible = true;
             _ = SearchPanel.SlideAndFadeInAsync();
-            SearchBox.Focus();
+            _ = SearchBox.Focus();
             if (!CodeEditor.TextArea.Selection.IsEmpty)
+            {
                 SearchBox.Text = CodeEditor.TextArea.Selection.GetText();
+            }
         }
     }
     private void HideSearch()
@@ -350,7 +400,7 @@ public partial class EditorView : UserControl
         SearchPanel.IsVisible = false;
         ReplacePanel.IsVisible = false;
         ClearSearch();
-        CodeEditor.Focus();
+        _ = CodeEditor.Focus();
     }
     private void ClearSearch()
     {
@@ -377,8 +427,8 @@ public partial class EditorView : UserControl
         _searchIndex = -1;
         try
         {
-            var mode = useRegex ? AvaloniaEdit.Search.SearchMode.RegEx : AvaloniaEdit.Search.SearchMode.Normal;
-            var strategy = AvaloniaEdit.Search.SearchStrategyFactory.Create(query, !matchCase, wholeWord, mode);
+            var mode = useRegex ? SearchMode.RegEx : SearchMode.Normal;
+            var strategy = SearchStrategyFactory.Create(query, !matchCase, wholeWord, mode);
             var results = strategy.FindAll(CodeEditor.Document, 0, CodeEditor.Document.TextLength);
             foreach (var r in results)
             {
@@ -391,22 +441,23 @@ public partial class EditorView : UserControl
             var cur = CodeEditor.TextArea.Caret.Offset;
             _searchIndex = _searchResults.FindIndex(s => s.StartOffset >= cur);
             if (_searchIndex < 0)
+            {
                 _searchIndex = 0;
+            }
+
             NavigateToSearchResult(_searchIndex);
         }
         _searchHighlightTransformer.UpdateSearch(_searchResults, _searchIndex);
         CodeEditor.TextArea.TextView.Redraw();
     }
-    private static bool IsWholeWord(string text, int idx, int len)
-    {
-        var before = idx == 0 || !char.IsLetterOrDigit(text[idx - 1]);
-        var after = idx + len >= text.Length || !char.IsLetterOrDigit(text[idx + len]);
-        return before && after;
-    }
+
     private void NavigateToSearchResult(int index)
     {
         if (index < 0 || index >= _searchResults.Count)
+        {
             return;
+        }
+
         var seg = _searchResults[index];
         CodeEditor.Select(seg.StartOffset, seg.Length);
         CodeEditor.TextArea.Caret.Offset = seg.StartOffset;
@@ -432,7 +483,10 @@ public partial class EditorView : UserControl
     private void OnReplaceOne(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (_searchIndex < 0 || _searchIndex >= _searchResults.Count)
+        {
             return;
+        }
+
         var seg = _searchResults[_searchIndex];
         var replacement = ReplaceBox.Text ?? "";
         CodeEditor.Document.Replace(seg.StartOffset, seg.Length, replacement);
@@ -442,11 +496,14 @@ public partial class EditorView : UserControl
     {
         RunSearch();
         if (_searchResults.Count == 0)
+        {
             return;
+        }
+
         var replacement = ReplaceBox.Text ?? "";
         using (CodeEditor.Document.RunUpdate())
         {
-            for (int i = _searchResults.Count - 1; i >= 0; i--)
+            for (var i = _searchResults.Count - 1; i >= 0; i--)
             {
                 var seg = _searchResults[i];
                 CodeEditor.Document.Replace(seg.StartOffset, seg.Length, replacement);
@@ -457,8 +514,11 @@ public partial class EditorView : UserControl
     private void ToggleLineComment()
     {
         if (DataContext is not MainPageModel vm || vm.ActiveTab is null)
+        {
             return;
-        var ext = Path.GetExtension(vm.ActiveTab.FilePath).ToLower();
+        }
+
+        var ext = Path.GetExtension(vm.ActiveTab.FilePath).ToLower(System.Globalization.CultureInfo.CurrentCulture);
         var prefix = ext switch
         {
             ".cs" or ".c" or ".cpp" or ".h" or ".hpp" or ".java" or ".js" or ".ts" => "//",
@@ -479,8 +539,8 @@ public partial class EditorView : UserControl
             var endOffset = selection.SurroundingSegment.Offset + selection.SurroundingSegment.Length;
             endLine = doc.GetLineByOffset(endOffset).LineNumber;
         }
-        bool allCommented = true;
-        for (int ln = startLine; ln <= endLine; ln++)
+        var allCommented = true;
+        for (var ln = startLine; ln <= endLine; ln++)
         {
             var line = doc.GetLineByNumber(ln);
             var text = doc.GetText(line.Offset, line.Length).TrimStart();
@@ -489,7 +549,7 @@ public partial class EditorView : UserControl
         }
         using (doc.RunUpdate())
         {
-            for (int ln = startLine; ln <= endLine; ln++)
+            for (var ln = startLine; ln <= endLine; ln++)
             {
                 var line = doc.GetLineByNumber(ln);
                 var text = doc.GetText(line.Offset, line.Length);
@@ -499,7 +559,10 @@ public partial class EditorView : UserControl
                     var spaces = text.Length - trimmed.Length;
                     var newText = string.Concat(text.AsSpan(0, spaces), trimmed.AsSpan(prefix.Length));
                     if (newText.StartsWith(' ') && trimmed.StartsWith(prefix + " ", StringComparison.Ordinal))
+                    {
                         newText = string.Concat(text.AsSpan(0, spaces), trimmed.AsSpan(prefix.Length + 1));
+                    }
+
                     doc.Replace(line.Offset, line.Length, newText);
                 }
                 else
@@ -521,23 +584,38 @@ public partial class EditorView : UserControl
             var start = offset;
             var end = offset;
             while (start > 0 && char.IsLetterOrDigit(doc.GetCharAt(start - 1)))
+            {
                 start--;
+            }
+
             while (end < doc.TextLength && char.IsLetterOrDigit(doc.GetCharAt(end)))
+            {
                 end++;
+            }
+
             if (start == end)
+            {
                 return;
+            }
+
             CodeEditor.Select(start, end - start);
             return;
         }
         query = sel.GetText();
         if (string.IsNullOrEmpty(query))
+        {
             return;
+        }
+
         var text = CodeEditor.Document.Text;
         var from = CodeEditor.TextArea.Selection.SurroundingSegment.Offset
                    + CodeEditor.TextArea.Selection.SurroundingSegment.Length;
         var next = text.IndexOf(query, from, StringComparison.Ordinal);
         if (next < 0)
+        {
             next = text.IndexOf(query, 0, StringComparison.Ordinal);
+        }
+
         if (next >= 0)
         {
             CodeEditor.Select(next, query.Length);
@@ -555,8 +633,12 @@ public partial class EditorView : UserControl
             ? new string(' ', CodeEditor.Options.IndentationSize)
             : "\t";
         using (doc.RunUpdate())
-            for (int ln = startLine; ln <= endLine; ln++)
+        {
+            for (var ln = startLine; ln <= endLine; ln++)
+            {
                 doc.Insert(doc.GetLineByNumber(ln).Offset, indent);
+            }
+        }
     }
     private void UnindentSelection()
     {
@@ -567,19 +649,26 @@ public partial class EditorView : UserControl
         var size = CodeEditor.Options.IndentationSize;
         using (doc.RunUpdate())
         {
-            for (int ln = startLine; ln <= endLine; ln++)
+            for (var ln = startLine; ln <= endLine; ln++)
             {
                 var line = doc.GetLineByNumber(ln);
                 var text = doc.GetText(line.Offset, line.Length);
                 if (text.StartsWith('\t'))
+                {
                     doc.Remove(line.Offset, 1);
+                }
                 else
                 {
                     var spaces = 0;
                     while (spaces < text.Length && text[spaces] == ' ' && spaces < size)
+                    {
                         spaces++;
+                    }
+
                     if (spaces > 0)
+                    {
                         doc.Remove(line.Offset, spaces);
+                    }
                 }
             }
         }
@@ -589,7 +678,10 @@ public partial class EditorView : UserControl
         var doc = CodeEditor.Document;
         var ln = CodeEditor.TextArea.Caret.Line;
         if (ln <= 1)
+        {
             return;
+        }
+
         var cur = doc.GetLineByNumber(ln);
         var prev = doc.GetLineByNumber(ln - 1);
         var curText = doc.GetText(cur.Offset, cur.Length);
@@ -606,7 +698,10 @@ public partial class EditorView : UserControl
         var doc = CodeEditor.Document;
         var ln = CodeEditor.TextArea.Caret.Line;
         if (ln >= doc.LineCount)
+        {
             return;
+        }
+
         var cur = doc.GetLineByNumber(ln);
         var next = doc.GetLineByNumber(ln + 1);
         var curText = doc.GetText(cur.Offset, cur.Length);
@@ -621,14 +716,20 @@ public partial class EditorView : UserControl
     private void StickyScrollTimer_Tick(object? sender, EventArgs e)
     {
         if (!IsVisible)
+        {
             return;
+        }
+
         UpdateStickyScroll();
     }
     private void UpdateStickyScroll()
     {
         var sv = CodeEditor.FindDescendantOfType<ScrollViewer>();
         if (sv is null)
+        {
             return;
+        }
+
         var firstVisibleLine = CodeEditor.TextArea.TextView
             .GetDocumentLineByVisualTop(sv.Offset.Y);
         if (firstVisibleLine is null)
@@ -650,7 +751,7 @@ public partial class EditorView : UserControl
     }
     private static DocumentLine? FindScopeLine(TextDocument doc, int fromLine)
     {
-        for (int ln = fromLine - 1; ln >= 1; ln--)
+        for (var ln = fromLine - 1; ln >= 1; ln--)
         {
             var line = doc.GetLineByNumber(ln);
             var text = doc.GetText(line.Offset, line.Length).TrimStart();
@@ -660,7 +761,9 @@ public partial class EditorView : UserControl
                 text.StartsWith("internal ") || text.StartsWith("static ") ||
                 text.StartsWith("void ") || text.StartsWith("async ") ||
                 text.StartsWith("def ") || text.StartsWith("fn "))
+            {
                 return line;
+            }
         }
         return null;
     }
@@ -669,20 +772,25 @@ public partial class EditorView : UserControl
         var mainSv = CodeEditor.FindDescendantOfType<ScrollViewer>();
         var miniSv = MinimapEditor.FindDescendantOfType<ScrollViewer>();
         if (mainSv is null || miniSv is null)
+        {
             return;
-        if (mainSv.Extent.Height > mainSv.Viewport.Height)
+        }
+
+        if (mainSv.Extent.Height > mainSv.Viewport.Height && mainSv.Extent.Height > 0)
         {
             var pct = mainSv.Offset.Y / (mainSv.Extent.Height - mainSv.Viewport.Height);
             var miniOffset = pct * Math.Max(0, miniSv.Extent.Height - miniSv.Viewport.Height);
             if (miniOffset >= 0)
-                miniSv.Offset = new Vector(miniSv.Offset.X, miniOffset);
-            if (miniSv.Extent.Height > 0)
             {
-                var vpRatio = mainSv.Viewport.Height / mainSv.Extent.Height;
-                var vpTop = pct * miniSv.Extent.Height;
-                MinimapViewport.Height = Math.Max(10, vpRatio * miniSv.Extent.Height);
-                MinimapViewport.Margin = new Avalonia.Thickness(0, vpTop, 0, 0);
+                miniSv.Offset = new Vector(miniSv.Offset.X, miniOffset);
             }
+
+            var vpRatio = MinimapEditor.Bounds.Height / mainSv.Extent.Height;
+            MinimapViewport.Height = Math.Max(10, mainSv.Viewport.Height * vpRatio);
+
+            var pctTop = mainSv.Offset.Y / mainSv.Extent.Height;
+            var vpTop = pctTop * MinimapEditor.Bounds.Height;
+            MinimapViewport.Margin = new Thickness(0, vpTop, 0, 0);
         }
     }
     private void Minimap_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -712,71 +820,145 @@ public partial class EditorView : UserControl
         e.Pointer.Capture(null);
         e.Handled = true;
     }
-    private void Minimap_PointerWheelChanged(object? sender, PointerWheelEventArgs e)
-    {
-        var mainSv = CodeEditor.FindDescendantOfType<ScrollViewer>();
-        if (mainSv != null)
-        {
-            mainSv.Offset = new Vector(mainSv.Offset.X, Math.Max(0, mainSv.Offset.Y - (e.Delta.Y * 50)));
-        }
-        e.Handled = true;
-    }
+    private void Minimap_PointerWheelChanged(object? sender, PointerWheelEventArgs e) => CodeEditorPointerWheelChanged(CodeEditor, e);
     private void ScrollMainEditorToMinimapY(double minimapY)
     {
         var mainSv = CodeEditor.FindDescendantOfType<ScrollViewer>();
-        var miniSv = MinimapEditor.FindDescendantOfType<ScrollViewer>();
-        if (mainSv == null || miniSv == null || miniSv.Extent.Height == 0)
+        if (mainSv == null || mainSv.Extent.Height == 0 || MinimapEditor.Bounds.Height == 0)
+        {
             return;
+        }
+
         var clickRatio = minimapY / MinimapEditor.Bounds.Height;
         var targetY = (clickRatio * mainSv.Extent.Height) - (mainSv.Viewport.Height / 2);
         targetY = Math.Clamp(targetY, 0, mainSv.Extent.Height - mainSv.Viewport.Height);
-        mainSv.Offset = new Vector(mainSv.Offset.X, targetY);
+
+        _targetScrollY = targetY;
+        _isSmoothScrolling = true;
+        _renderTimer?.Start();
     }
     public void CodeEditorPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
-        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            CodeEditor.FontSize = Math.Clamp(
+                CodeEditor.FontSize + (e.Delta.Y > 0 ? 1 : -1), 8, 72);
+            e.Handled = true;
             return;
-        CodeEditor.FontSize = Math.Clamp(
-            CodeEditor.FontSize + (e.Delta.Y > 0 ? 1 : -1), 8, 72);
+        }
+
+        var sv = CodeEditor.FindDescendantOfType<ScrollViewer>();
+        if (sv == null || sv.Extent.Height <= sv.Viewport.Height)
+        {
+            return;
+        }
+
+        if (!_isSmoothScrolling)
+        {
+            _targetScrollY = sv.Offset.Y;
+            _isSmoothScrolling = true;
+        }
+
+        _targetScrollY -= e.Delta.Y * 60;
+        _targetScrollY = Math.Clamp(_targetScrollY, 0, sv.Extent.Height - sv.Viewport.Height);
+
         e.Handled = true;
+        _renderTimer?.Start();
     }
-    private bool TryInsertSnippet()
+
+    private void RenderTimer_Tick(object? sender, EventArgs e)
     {
-        var doc = CodeEditor.Document;
-        var caretOffset = CodeEditor.TextArea.Caret.Offset;
-        var line = doc.GetLineByOffset(caretOffset);
-        var textBeforeCaret = doc.GetText(line.Offset, caretOffset - line.Offset);
-        var words = textBeforeCaret.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
-        if (words.Length == 0)
-            return false;
-        var lastWord = words[^1];
-        var replaceStartOffset = caretOffset - lastWord.Length;
-        string snippet = lastWord switch
+        var sv = CodeEditor.FindDescendantOfType<ScrollViewer>();
+        if (sv == null)
+        { _renderTimer?.Stop(); _isSmoothScrolling = false; return; }
+
+        var currentY = sv.Offset.Y;
+
+        // Линейная интерполяция (Lerp) для кинематографичного скольжения
+        var newY = currentY + ((_targetScrollY - currentY) * 0.15);
+
+        // Если почти доехали - останавливаемся
+        if (Math.Abs(_targetScrollY - newY) < 1.0)
         {
-            "cw" => "Console.WriteLine($0);",
-            "for" => "for (int i = 0; i < $1; i++)\n{\n    $0\n}",
-            "mainc" => "int main() \n{\n    $0\n    return 0;\n}",
-            _ => ""
-        };
-        if (string.IsNullOrEmpty(snippet))
-            return false;
-        using (doc.RunUpdate())
+            sv.Offset = new Vector(sv.Offset.X, _targetScrollY);
+            _renderTimer?.Stop();
+            _isSmoothScrolling = false;
+        }
+        else
         {
-            doc.Remove(replaceStartOffset, lastWord.Length);
-            var cursorTargetIndex = snippet.IndexOf("$0");
-            var cleanSnippet = snippet.Replace("$1", "length").Replace("$0", "");
-            var indent = textBeforeCaret[..^lastWord.Length];
-            cleanSnippet = cleanSnippet.Replace("\n", "\n" + indent);
-            doc.Insert(replaceStartOffset, cleanSnippet);
-            if (cursorTargetIndex != -1)
+            sv.Offset = new Vector(sv.Offset.X, newY);
+        }
+    }
+
+    private void TextView_ScrollOffsetChanged(object? sender, EventArgs e) => UpdateSmoothCaret();
+
+    private void UpdateSmoothCaret()
+    {
+        if (CodeEditor.Document == null)
+        {
+            return;
+        }
+
+        var textView = CodeEditor.TextArea.TextView;
+        if (textView == null || !textView.VisualLinesValid)
+        {
+            return;
+        }
+
+        try
+        {
+            var pos = textView.GetVisualPosition(CodeEditor.TextArea.Caret.Position, AvaloniaEdit.Rendering.VisualYPosition.LineTop);
+            var scrollOffset = textView.ScrollOffset;
+
+            var p = new Point(pos.X - scrollOffset.X, pos.Y - scrollOffset.Y);
+            var translated = textView.TranslatePoint(p, CodeEditor);
+
+            if (translated.HasValue)
             {
-                CodeEditor.TextArea.Caret.Offset = replaceStartOffset + cursorTargetIndex;
+                var x = translated.Value.X;
+                var y = translated.Value.Y;
+
+                SmoothCaret.Height = CodeEditor.FontSize * 1.2;
+                SmoothCaret.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse(
+                    $"translate({x.ToString(System.Globalization.CultureInfo.InvariantCulture)}px, {y.ToString(System.Globalization.CultureInfo.InvariantCulture)}px)");
             }
         }
-        return true;
+        catch
+        {
+            // VisualLines могут быть еще невалидны при переключении вкладок
+        }
     }
+
+    private void Document_Changed(object? sender, DocumentChangeEventArgs e)
+    {
+        if (e.InsertedText?.Text.Length > 1)
+        {
+            _pasteTransformer.StartOffset = e.Offset;
+            _pasteTransformer.EndOffset = e.Offset + e.InsertionLength;
+            _pasteTransformer.CurrentOpacity = 1.0;
+
+            var timer = new Avalonia.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(30) };
+            timer.Tick += (s, ev) =>
+            {
+                _pasteTransformer.CurrentOpacity -= 0.08;
+                if (_pasteTransformer.CurrentOpacity <= 0)
+                {
+                    _pasteTransformer.CurrentOpacity = 0;
+                    timer.Stop();
+                }
+                CodeEditor.TextArea.TextView.Redraw(new TextSegment
+                {
+                    StartOffset = _pasteTransformer.StartOffset,
+                    Length = _pasteTransformer.EndOffset - _pasteTransformer.StartOffset
+                });
+            };
+            timer.Start();
+        }
+    }
+
     private void Caret_PositionChanged(object? sender, EventArgs e)
     {
+        UpdateSmoothCaret();
         if (DataContext is MainPageModel vm)
         {
             var line = CodeEditor.TextArea.Caret.Line;

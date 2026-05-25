@@ -19,10 +19,7 @@ public partial class MainWindow : Window
 
         if (outputTabControl != null && terminalControlsPanel != null)
         {
-            outputTabControl.SelectionChanged += (s, e) =>
-            {
-                terminalControlsPanel.IsVisible = outputTabControl.SelectedIndex == 0;
-            };
+            outputTabControl.SelectionChanged += (s, e) => terminalControlsPanel.IsVisible = outputTabControl.SelectedIndex == 0;
         }
 
         if (profileComboBox != null)
@@ -37,19 +34,13 @@ public partial class MainWindow : Window
             };
         }
 
-        if (newTermBtn != null)
-        {
-            newTermBtn.Click += (s, e) => terminalView?.StartProcess(profileComboBox?.SelectedItem?.ToString());
-        }
+        newTermBtn?.Click += (s, e) => terminalView?.StartProcess(profileComboBox?.SelectedItem?.ToString());
 
-        if (clearBtn != null)
-        {
-            clearBtn.Click += (s, e) => terminalView?.StartProcess(profileComboBox?.SelectedItem?.ToString());
-        }
+        clearBtn?.Click += (s, e) => terminalView?.StartProcess(profileComboBox?.SelectedItem?.ToString());
 
         if (App.Services != null)
         {
-            var model = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<PageModels.MainPageModel>(App.Services);
+            var model = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainPageModel>(App.Services);
             DataContext = model;
 
             model.PropertyChanged += async (s, e) =>
@@ -99,7 +90,7 @@ public partial class MainWindow : Window
                     var sv = this.FindControl<ScrollViewer>("OutputScrollViewer");
                     if (sv != null)
                     {
-                        bool isNearBottom = sv.Offset.Y >= (sv.Extent.Height - sv.Viewport.Height - 20);
+                        var isNearBottom = sv.Offset.Y >= (sv.Extent.Height - sv.Viewport.Height - 20);
                         if (isNearBottom || sv.Extent.Height == 0)
                         {
                             Dispatcher.UIThread.Post(() => sv.ScrollToEnd(), DispatcherPriority.Loaded);
@@ -119,9 +110,9 @@ public partial class MainWindow : Window
                     }
                 }
             };
-            this.KeyDown += (s, e) =>
+            KeyDown += (s, e) =>
             {
-                if (e.Key == Avalonia.Input.Key.F11 && DataContext is PageModels.MainPageModel vm)
+                if (e.Key == Avalonia.Input.Key.F11 && DataContext is MainPageModel vm)
                 {
                     vm.IsZenMode = !vm.IsZenMode;
                     e.Handled = true;
@@ -130,12 +121,18 @@ public partial class MainWindow : Window
         }
     }
 
-    protected override void OnClosed(System.EventArgs e)
+    protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);
-        if (CIDE.Services.WorkspaceService.CurrentProvider is System.IDisposable d)
+        if (DataContext is MainPageModel model)
         {
-            d.Dispose();
+            foreach (var root in model.WorkspaceRoots)
+            {
+                if (root.Provider is IDisposable d)
+                {
+                    d.Dispose();
+                }
+            }
         }
     }
 }
