@@ -48,7 +48,6 @@ public partial class TerminalView : UserControl, IDisposable
         {
             activeRoot = vmContext.ActiveTab?.Root ?? vmContext.SelectedNode?.Root;
         }
-
         if (activeRoot?.Provider is SshFileSystemProvider sshProvider)
         {
             var client = sshProvider.GetSshClient();
@@ -106,7 +105,6 @@ public partial class TerminalView : UserControl, IDisposable
         {
             return;
         }
-
         _disposed = true;
         try
         {

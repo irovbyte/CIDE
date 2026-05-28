@@ -1,5 +1,4 @@
 using System.Text;
-
 namespace CIDE.Helpers;
 
 public enum FileDisplayMode
@@ -103,16 +102,13 @@ public static class FileTypeHelper
         {
             using var stream = new FileStream(
                 filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-
             var length = (int)Math.Min(8192, stream.Length);
             if (length == 0)
             {
                 return false;
             }
-
             var buffer = new byte[length];
             var read = stream.Read(buffer, 0, length);
-
             return HasBinarySignature(buffer, read) || HasHighBinaryRatio(buffer, read);
         }
         catch

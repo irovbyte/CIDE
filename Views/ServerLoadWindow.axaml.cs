@@ -7,18 +7,14 @@ using Avalonia.Threading;
 using CIDE.Models;
 using CIDE.Services;
 using Renci.SshNet;
-
 namespace CIDE.Views;
-
 #pragma warning disable SYSLIB1045 
 #pragma warning disable CA1861 
-
 public partial class ServerLoadWindow : Window
 {
     private bool _isRunning = true;
     private long _prevIdleTime;
     private long _prevTotalTime;
-
     public ServerLoadWindow()
     {
         InitializeComponent();
@@ -35,14 +31,13 @@ public partial class ServerLoadWindow : Window
             };
         _ = Task.Run(PollStatsLoopAsync);
     }
-
     private async Task PollStatsLoopAsync()
     {
         while (_isRunning)
         {
             try
             {
-                var sshRoot = (DataContext as MainPageModel)?.WorkspaceRoots.FirstOrDefault(r => r.Provider is SshFileSystemProvider);
+                var sshRoot = (DataContext as MainPageModel)?.Sidebar.WorkspaceRoots.FirstOrDefault(r => r.Provider is SshFileSystemProvider);
                 if (sshRoot?.Provider is SshFileSystemProvider sshProvider)
                 {
                     var client = sshProvider.GetSshClient();
@@ -69,7 +64,6 @@ public partial class ServerLoadWindow : Window
             await Task.Delay(1000);
         }
     }
-
     private void SetStatus(string msg)
     {
         Dispatcher.UIThread.Post(() =>
@@ -80,7 +74,6 @@ public partial class ServerLoadWindow : Window
             RamProgress.Value = 0;
         });
     }
-
     private void ParseAndApplyStats(string output)
     {
         try
@@ -90,7 +83,6 @@ public partial class ServerLoadWindow : Window
             {
                 return;
             }
-
             var stat = parts[0];
             var meminfo = parts[1];
             var cpuLine = stat.Split('\n')[0];
@@ -102,10 +94,8 @@ public partial class ServerLoadWindow : Window
                 var nice = long.Parse(cpuMatch.Groups[2].Value);
                 var system = long.Parse(cpuMatch.Groups[3].Value);
                 var idle = long.Parse(cpuMatch.Groups[4].Value);
-
                 var idleTime = idle;
                 var totalTime = user + nice + system + idle;
-
                 if (_prevTotalTime > 0)
                 {
                     var totalDelta = totalTime - _prevTotalTime;
@@ -119,29 +109,24 @@ public partial class ServerLoadWindow : Window
             var memFreeMatch = Regex.Match(meminfo, @"MemFree:\s+(\d+)");
             var buffersMatch = Regex.Match(meminfo, @"Buffers:\s+(\d+)");
             var cachedMatch = Regex.Match(meminfo, @"Cached:\s+(\d+)");
-
             double memUsage = 0;
             double memTotalMb = 0;
             double memUsedMb = 0;
-
             if (memTotalMatch.Success && memFreeMatch.Success)
             {
                 var total = long.Parse(memTotalMatch.Groups[1].Value);
                 var free = long.Parse(memFreeMatch.Groups[1].Value);
                 var buffers = buffersMatch.Success ? long.Parse(buffersMatch.Groups[1].Value) : 0;
                 var cached = cachedMatch.Success ? long.Parse(cachedMatch.Groups[1].Value) : 0;
-
                 var used = total - free - buffers - cached;
                 memUsage = (double)used / total * 100.0;
                 memTotalMb = total / 1024.0;
                 memUsedMb = used / 1024.0;
             }
-
             Dispatcher.UIThread.Post(() =>
             {
                 CpuText.Text = $"{cpuUsage:F1} %";
                 CpuProgress.Value = double.IsNaN(cpuUsage) ? 0 : Math.Min(100, Math.Max(0, cpuUsage));
-
                 RamText.Text = $"{memUsedMb:F0} MB / {memTotalMb:F0} MB ({memUsage:F1}%)";
                 RamProgress.Value = double.IsNaN(memUsage) ? 0 : Math.Min(100, Math.Max(0, memUsage));
             });

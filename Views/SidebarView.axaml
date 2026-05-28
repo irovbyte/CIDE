@@ -1,117 +1,211 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:CIDE.PageModels"
              xmlns:models="clr-namespace:CIDE.Models"
              xmlns:helpers="clr-namespace:CIDE.Helpers"
+             xmlns:controls="clr-namespace:CIDE.Controls"
              x:DataType="vm:MainPageModel"
              x:Class="CIDE.Views.SidebarView"
              Background="Transparent">
 
-    <Border Classes="glowOnHover glowOnFocus panelSlideIn" Background="{DynamicResource BgSurface}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="12" ClipToBounds="True">
+    <UserControl.Resources>
+        <helpers:IconPathConverter x:Key="IconConverter"/>
+        <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets, DejaVu Sans</FontFamily>
+        <x:String x:Key="FolderIcon">avares://CIDE/Assets/Icons/folders/default.svg</x:String>
+        <x:String x:Key="RootIcon">avares://CIDE/Assets/Icons/folders/root.svg</x:String>
+    </UserControl.Resources>
+
+    <Border Classes="glowOnHover glowOnFocus panelSlideIn"
+            Background="{DynamicResource BgSurface}"
+            BorderBrush="{DynamicResource BorderSubtle}"
+            BorderThickness="1" CornerRadius="12" ClipToBounds="True">
         <Grid RowDefinitions="Auto, *">
 
-            <Border Grid.Row="0" Margin="10,10,10,0" Padding="12,8" CornerRadius="8" Background="#11FFFFFF" BorderThickness="1" BorderBrush="#15FFFFFF">
+            <!-- Заголовок -->
+            <Border Grid.Row="0" Margin="10,10,10,0" Padding="12,8"
+                    CornerRadius="8" Background="#11FFFFFF"
+                    BorderThickness="1" BorderBrush="#15FFFFFF">
                 <Grid ColumnDefinitions="*, Auto">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="📁" FontSize="14" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding ExplorerTitle}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentLight}" LetterSpacing="1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        <Image Width="14" Height="14" Source="{Binding Source={StaticResource FolderIcon}, Converter={StaticResource IconConverter}}"/>
+                        <TextBlock Text="{Binding ExplorerTitle}"
+                                   FontSize="12" FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentLight}"
+                                   LetterSpacing="1" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
-                    
-                    <!-- Тулбар действий с файлами -->
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                        <Button Classes="subtle" Command="{Binding CreateFileNodeCommand}" Padding="4" ToolTip.Tip="Новый файл">
-                            <TextBlock Text="📄" FontSize="12"/>
+
+                    <StackPanel x:Name="FullToolbar" Grid.Column="1"
+                                Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                        <Button Classes="subtle" Command="{Binding CreateFileNodeCommand}"
+                                Padding="4" ToolTip.Tip="Новый файл">
+                            <Image Width="14" Height="14" Source="avares://CIDE/Assets/Icons/file.png"/>
                         </Button>
-                        <Button Classes="subtle" Command="{Binding CreateFolderNodeCommand}" Padding="4" ToolTip.Tip="Новая папка">
-                            <TextBlock Text="📁" FontSize="12"/>
+                        <Button Classes="subtle" Command="{Binding CreateFolderNodeCommand}"
+                                Padding="4" ToolTip.Tip="Новая папка">
+                            <Image Width="14" Height="14" Source="{Binding Source={StaticResource FolderIcon}, Converter={StaticResource IconConverter}}"/>
                         </Button>
-                        <Button Classes="subtle" Command="{Binding RenameNodeCommand}" Padding="4" ToolTip.Tip="Переименовать (F2)">
-                            <TextBlock Text="✏️" FontSize="12"/>
+                        <Button Classes="subtle" Command="{Binding RenameNodeCommand}"
+                                Padding="4" ToolTip.Tip="Переименовать (F2)">
+                            <TextBlock Text="&#xE8AC;" FontFamily="{StaticResource IconFont}" FontSize="12"/>
                         </Button>
-                        <Button Classes="subtle" Command="{Binding DeleteNodeCommand}" Padding="4" ToolTip.Tip="Удалить (Del)">
-                            <TextBlock Text="🗑️" FontSize="12"/>
+                        <Button Classes="subtle" Command="{Binding DeleteNodeCommand}"
+                                Padding="4" ToolTip.Tip="Удалить (Del)">
+                            <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="12"/>
                         </Button>
                     </StackPanel>
+
+                    <Button x:Name="CompactToolbar" Grid.Column="1" Classes="subtle"
+                            Padding="6,4" ToolTip.Tip="Действия..." IsVisible="False">
+                        <TextBlock Text="&#xE712;" FontFamily="{StaticResource IconFont}"
+                                   FontSize="14" FontWeight="Bold"/>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuItem Header="Новый файл" Command="{Binding CreateFileNodeCommand}">
+                                    <MenuItem.Icon>
+                                        <Image Width="14" Height="14" Source="avares://CIDE/Assets/Icons/file.png"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Новая папка" Command="{Binding CreateFolderNodeCommand}">
+                                    <MenuItem.Icon>
+                                        <Image Width="14" Height="14" Source="{Binding Source={StaticResource FolderIcon}, Converter={StaticResource IconConverter}}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="Переименовать" Command="{Binding RenameNodeCommand}" InputGesture="F2">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="&#xE8AC;" FontFamily="{StaticResource IconFont}" FontSize="12" HorizontalAlignment="Center"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Удалить" Command="{Binding DeleteNodeCommand}" InputGesture="Delete" Foreground="#FF5555">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="12" Foreground="#FF5555" HorizontalAlignment="Center"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
                 </Grid>
             </Border>
 
-            <!-- ДЕРЕВО ФАЙЛОВ -->
-            <ListBox x:Name="FileTreeListBox"
-                     Grid.Row="1"
-                     ItemsSource="{Binding FlatTree}"
-                     SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
-                     Background="Transparent"
-                     BorderThickness="0"
-                     Margin="0,5,0,10"
-                     SelectionMode="Single"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                
-                <ListBox.KeyBindings>
-                    <KeyBinding Gesture="F2" Command="{Binding RenameNodeCommand}" />
-                    <KeyBinding Gesture="Delete" Command="{Binding DeleteNodeCommand}" />
-                </ListBox.KeyBindings>
+            <!-- Дерево файлов -->
+            <TreeView x:Name="FileTreeView"
+                      Grid.Row="1"
+                      ItemsSource="{Binding WorkspaceRoots}"
+                      Background="Transparent"
+                      BorderThickness="0"
+                      Margin="0,4,0,8"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto">
 
-                <!-- ИСПРАВЛЕНИЕ: Отключаем виртуализацию (заменяем на StackPanel) для идеальной работы анимации "аккордеона" -->
-                <ListBox.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel />
-                    </ItemsPanelTemplate>
-                </ListBox.ItemsPanel>
+                <TreeView.KeyBindings>
+                    <KeyBinding Gesture="F2" Command="{Binding RenameNodeCommand}"/>
+                    <KeyBinding Gesture="Delete" Command="{Binding DeleteNodeCommand}"/>
+                </TreeView.KeyBindings>
 
-                <ListBox.ItemTemplate>
-                    <DataTemplate DataType="models:FileNode">
-                        <Border Background="Transparent" PointerPressed="FileNode_PointerPressed" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Padding="4,0">
-                            
-                            <!-- ДОБАВЛЯЕМ КОНТЕКСТНОЕ МЕНЮ СЮДА -->
+                <TreeView.DataTemplates>
+
+                    <!-- WorkspaceRoot -->
+                    <TreeDataTemplate DataType="models:WorkspaceRoot"
+                                      ItemsSource="{Binding RootNode.Children}">
+                        <Border Background="Transparent" HorizontalAlignment="Stretch" Padding="0,4,4,4">
+                            <Grid ColumnDefinitions="Auto, Auto, *">
+                                <!-- Стрелочка -->
+                                <Border Grid.Column="0" Width="14" Height="26" Background="Transparent">
+                                    <TextBlock Text="&#xE76C;"
+                                               Foreground="#707080"
+                                               FontFamily="{StaticResource IconFont}"
+                                               FontSize="8"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Classes.expanded="{Binding $parent[TreeViewItem].IsExpanded}">
+                                        <TextBlock.Transitions>
+                                            <Transitions>
+                                                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+                                            </Transitions>
+                                        </TextBlock.Transitions>
+                                        <TextBlock.Styles>
+                                            <Style Selector="TextBlock">
+                                                <Setter Property="RenderTransform" Value="rotate(0deg)" />
+                                            </Style>
+                                            <Style Selector="TextBlock.expanded">
+                                                <Setter Property="RenderTransform" Value="rotate(90deg)" />
+                                            </Style>
+                                        </TextBlock.Styles>
+                                    </TextBlock>
+                                </Border>
+                                
+                                <Image Grid.Column="1" Width="14" Height="14" Source="{Binding Source={StaticResource RootIcon}, Converter={StaticResource IconConverter}}" Margin="2,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding Name}"
+                                           Foreground="{DynamicResource FgPrimary}"
+                                           FontWeight="Bold" FontSize="13"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                    </TreeDataTemplate>
+
+                    <!-- FileNode -->
+                    <TreeDataTemplate DataType="models:FileNode" ItemsSource="{Binding Children}">
+                        <Border Background="Transparent"
+                                PointerPressed="FileNode_PointerPressed"
+                                HorizontalAlignment="Stretch"
+                                Padding="0,3,4,3">
                             <Border.ContextMenu>
                                 <ContextMenu>
-                                    <MenuItem Header="📄 Новый файл" Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).CreateFileNodeCommand}" />
-                                    <MenuItem Header="📁 Новая папка" Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).CreateFolderNodeCommand}" />
-                                    <Separator />
-                                    <MenuItem Header="✏️ Переименовать" Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).RenameNodeCommand}" InputGesture="F2" />
-                                    <MenuItem Header="🗑️ Удалить" Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).DeleteNodeCommand}" InputGesture="Delete" Foreground="#FF5555" />
+                                    <MenuItem Header="Новый файл" Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).CreateFileNodeCommand}">
+                                        <MenuItem.Icon>
+                                            <Image Width="14" Height="14" Source="avares://CIDE/Assets/Icons/file.png"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Новая папка" Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).CreateFolderNodeCommand}">
+                                        <MenuItem.Icon>
+                                            <Image Width="14" Height="14" Source="{Binding Source={StaticResource FolderIcon}, Converter={StaticResource IconConverter}}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator/>
+                                    <MenuItem Header="Переименовать" Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).RenameNodeCommand}" InputGesture="F2">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="&#xE8AC;" FontFamily="{StaticResource IconFont}" HorizontalAlignment="Center"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Удалить" Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).DeleteNodeCommand}" InputGesture="Delete" Foreground="#FF5555">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" Foreground="#FF5555" HorizontalAlignment="Center"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                 </ContextMenu>
                             </Border.ContextMenu>
 
-                            <!-- HorizontalStackLayout убран, используем Grid для жесткой привязки ширин -->
-                            <Grid ColumnDefinitions="Auto, Auto, Auto, *">
+                            <Grid ColumnDefinitions="Auto, Auto, Auto, *, Auto" MinHeight="26">
 
-                                <!-- 1. ИНДИКАТОРЫ ВЛОЖЕННОСТИ (Линии отступа) -->
-                                <!-- За счет Grid мы жестко задаем ширину (16px) на каждый уровень вложенности -->
-                                <ItemsControl Grid.Column="0" ItemsSource="{Binding DepthLevels}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Width="16" Height="26">
-                                                <Rectangle Width="1" Fill="#1AFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                                
-                                <!-- 2. ВРАЩАЮЩАЯСЯ СТРЕЛОЧКА (Класс expanded биндится к IsExpanded) -->
-                                <Border Grid.Column="1" Width="20" Background="Transparent" VerticalAlignment="Center">
+                                <!-- 1. Вертикальные линии отступа (VS Code стиль) -->
+                                <controls:IndentLinesControl
+                                    Grid.Column="0"
+                                    Depth="{Binding Depth}"
+                                    IndentWidth="14"
+                                    IsSelected="{Binding IsSelected}"
+                                    LineColor="#15FFFFFF"
+                                    ActiveLineColor="#449C27B0"
+                                    VerticalAlignment="Stretch"/>
+
+                                <!-- 2. Стрелочка (Chevron) -->
+                                <Border Grid.Column="1" Width="14" Height="26" Background="Transparent">
                                     <TextBlock Text="{Binding Glyph}"
                                                Foreground="{Binding GlyphColor}"
                                                FontFamily="{StaticResource IconFont}"
-                                               FontSize="10"
+                                               FontSize="8"
                                                HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
                                                Classes.expanded="{Binding IsExpanded}">
+                                        <TextBlock.Transitions>
+                                            <Transitions>
+                                                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+                                            </Transitions>
+                                        </TextBlock.Transitions>
                                         <TextBlock.Styles>
-                                            <!-- Состояние закрыто -->
                                             <Style Selector="TextBlock">
                                                 <Setter Property="RenderTransform" Value="rotate(0deg)" />
-                                                <Setter Property="Transitions">
-                                                    <Transitions>
-                                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseOut"/>
-                                                    </Transitions>
-                                                </Setter>
                                             </Style>
-                                            <!-- Состояние открыто -->
                                             <Style Selector="TextBlock.expanded">
                                                 <Setter Property="RenderTransform" Value="rotate(90deg)" />
                                             </Style>
@@ -119,28 +213,26 @@
                                     </TextBlock>
                                 </Border>
 
-                                <!-- 3. ИКОНКА ПАПКИ/ФАЙЛА -->
-                                <Border Grid.Column="2" Width="24" Background="Transparent" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding IconText}"
-                                               Foreground="{Binding IconColor}"
-                                               FontFamily="{StaticResource IconFont}"
-                                               FontSize="14"
-                                               HorizontalAlignment="Center"/>
-                                </Border>
+                                <!-- 3. Иконка -->
+                                <Image Grid.Column="2"
+                                       Source="{Binding IconPath, Converter={StaticResource IconConverter}}"
+                                       Width="16" Height="16"
+                                       VerticalAlignment="Center"
+                                       Margin="4,0,6,0"/>
 
-                                <!-- 4. ИМЯ ФАЙЛА -->
-                                <!-- TextWrapping="NoWrap" и TextTrimming="CharacterEllipsis" защищают от сплющивания всего Grid'а -->
+                                <!-- 4. Имя -->
                                 <TextBlock Grid.Column="3"
                                            Text="{Binding Name}"
-                                           Foreground="{DynamicResource FgPrimary}"
                                            FontSize="13"
                                            VerticalAlignment="Center"
-                                           Margin="4,0,0,0"
                                            TextWrapping="NoWrap"
                                            TextTrimming="CharacterEllipsis"
                                            Classes.gitModified="{Binding IsGitModified}"
                                            Classes.gitUntracked="{Binding IsGitUntracked}">
                                     <TextBlock.Styles>
+                                        <Style Selector="TextBlock">
+                                            <Setter Property="Foreground" Value="{DynamicResource FgPrimary}"/>
+                                        </Style>
                                         <Style Selector="TextBlock.gitModified">
                                             <Setter Property="Foreground" Value="#E8C56D"/>
                                         </Style>
@@ -149,32 +241,75 @@
                                         </Style>
                                     </TextBlock.Styles>
                                 </TextBlock>
+
+                                <!-- 5. Git точка справа -->
+                                <Ellipse Grid.Column="4"
+                                         Width="6" Height="6"
+                                         Margin="10,0,10,0"
+                                         VerticalAlignment="Center"
+                                         HorizontalAlignment="Right"
+                                         IsVisible="{Binding IsGitModified}">
+                                    <Ellipse.Fill>
+                                        <SolidColorBrush Color="#E8C56D"/>
+                                    </Ellipse.Fill>
+                                </Ellipse>
                             </Grid>
                         </Border>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-
-                <ListBox.Styles>
-                    <Style Selector="ListBoxItem">
+                    </TreeDataTemplate>
+                </TreeView.DataTemplates>
+                <TreeView.Styles>
+                    <Style Selector="TreeViewItem">
+                        <Setter Property="Theme" Value="{x:Null}" />
+                        <Setter Property="IsSelected" Value="{ReflectionBinding IsSelected, Mode=TwoWay}" />
+                        <Setter Property="IsExpanded" Value="{ReflectionBinding IsExpanded, Mode=TwoWay}" />
                         <Setter Property="CornerRadius" Value="4"/>
-                        <Setter Property="Margin" Value="4,0"/>
+                        <Setter Property="Margin" Value="0"/>
                         <Setter Property="Padding" Value="0"/>
                         <Setter Property="Cursor" Value="Hand"/>
                         <Setter Property="MinHeight" Value="26"/>
-                        <Setter Property="Transitions">
-                            <Transitions>
-                                <BrushTransition Property="Background" Duration="0:0:0.15" Easing="CubicEaseOut"/>
-                            </Transitions>
+                        <Setter Property="Template">
+                            <ControlTemplate>
+                                <StackPanel>
+                                    <Border Name="PART_LayoutRoot"
+                                            Margin="4,0"
+                                            Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                            CornerRadius="{TemplateBinding CornerRadius}"
+                                            MinHeight="{TemplateBinding MinHeight}">
+                                        <Border.Transitions>
+                                            <Transitions>
+                                                <BrushTransition Property="Background" Duration="0:0:0.12" Easing="CubicEaseOut"/>
+                                            </Transitions>
+                                        </Border.Transitions>
+                                        <ContentPresenter Name="PART_HeaderPresenter"
+                                                          Content="{TemplateBinding Header}"
+                                                          ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                                          HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
+                                                          VerticalAlignment="{TemplateBinding VerticalAlignment}"
+                                                          Margin="{TemplateBinding Padding}"/>
+                                    </Border>
+                                    <ItemsPresenter Name="PART_ItemsPresenter"
+                                                    IsVisible="{TemplateBinding IsExpanded}"
+                                                    ItemsPanel="{TemplateBinding ItemsPanel}"
+                                                    Margin="0"/>
+                                </StackPanel>
+                            </ControlTemplate>
                         </Setter>
                     </Style>
-                    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                        <Setter Property="Background" Value="#1AFFFFFF"/>
+ 
+                    <Style Selector="TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
+                        <Setter Property="Background" Value="#12FFFFFF"/>
                     </Style>
-                    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+                    <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+                        <Setter Property="Background" Value="#229C27B0"/>
+                    </Style>
+                    <Style Selector="TreeViewItem:selected:pointerover /template/ Border#PART_LayoutRoot">
                         <Setter Property="Background" Value="#339C27B0"/>
                     </Style>
-                </ListBox.Styles>
-            </ListBox>
+                </TreeView.Styles>
+            </TreeView>
         </Grid>
     </Border>
 </UserControl>
+

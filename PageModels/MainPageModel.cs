@@ -1,3 +1,5 @@
+#pragma warning disable CA1805
+#pragma warning disable CA1868
 namespace CIDE.PageModels;
 
 public enum AppState
@@ -6,32 +8,26 @@ public enum AppState
     Welcome,
     Editor
 }
-
 public sealed partial class MainPageModel : ObservableObject
 {
     [ObservableProperty]
     public partial AppState CurrentState { get; set; } = AppState.Loading;
-
     public bool IsLoadingState => CurrentState == AppState.Loading;
     public bool IsWelcomeState => CurrentState == AppState.Welcome;
     public bool IsWorkspaceOpen => CurrentState == AppState.Editor;
-
     partial void OnCurrentStateChanged(AppState value)
     {
         OnPropertyChanged(nameof(IsLoadingState));
         OnPropertyChanged(nameof(IsWelcomeState));
         OnPropertyChanged(nameof(IsWorkspaceOpen));
     }
-
     [ObservableProperty]
     public partial ObservableCollection<FileNode> FlatTree { get; set; } = [];
     [ObservableProperty]
     public partial FileNode? SelectedNode { get; set; }
     [ObservableProperty]
     public partial ObservableCollection<EditorTab> Tabs { get; set; } = [];
-
     public static SettingsService Settings => SettingsService.Instance;
-
     [ObservableProperty]
     public partial EditorTab? ActiveTab { get; set; }
     [ObservableProperty]
@@ -40,37 +36,31 @@ public sealed partial class MainPageModel : ObservableObject
     public partial string ExplorerTitle { get; set; } = "ОБОЗРЕВАТЕЛЬ";
     [ObservableProperty]
     public partial bool IsEditorVisible { get; set; }
-
     [ObservableProperty]
     public partial bool IsBusy { get; set; }
-
     [ObservableProperty]
     public partial string BusyText { get; set; } = "";
-
     [ObservableProperty]
     public partial string ProjectTypeDisplay { get; set; } = "ПРОЕКТ";
-
     [ObservableProperty]
     public partial bool IsZenMode { get; set; }
-
-    [ObservableProperty]
-    public partial bool IsWslWorkspace { get; set; }
-
     [ObservableProperty]
     public partial string RemoteStatusText { get; set; } = "Локально";
-
     [ObservableProperty]
     public partial string RemoteStatusColor { get; set; } = "#9061F9";
-
     [ObservableProperty]
     public partial bool IsOutputVisible { get; set; }
-
     [ObservableProperty]
     public partial string CursorPosition { get; set; } = "Ln 1, Col 1";
     [ObservableProperty]
     public partial ObservableCollection<string> BuildProfiles { get; set; } = [];
     [ObservableProperty]
     public partial string SelectedBuildProfile { get; set; } = "Один файл (C/C++)";
+    [ObservableProperty]
+    public partial SidebarViewModel Sidebar { get; set; } = new();
+    public ObservableCollection<EditorTab> AllTabs { get; set; } = [];
+    [ObservableProperty]
+    public partial bool IsCommandPaletteVisible { get; set; }
     [ObservableProperty]
     public partial bool IsSidebarVisible { get; set; } = true;
     [ObservableProperty]
@@ -87,18 +77,14 @@ public sealed partial class MainPageModel : ObservableObject
     public partial ObservableCollection<string> BuildTargets { get; set; } = [];
     [ObservableProperty]
     public partial string? SelectedBuildTarget { get; set; }
-
     [ObservableProperty]
     public partial ObservableCollection<string> RecentWorkspaces { get; set; } = [];
-
     public ObservableCollection<WorkspaceRoot> WorkspaceRoots { get; } = [];
 #pragma warning disable IDE0032
     private string? _workspacePath;
 #pragma warning restore IDE0032
-
     public event Action<string, string, FileDisplayMode>? FileOpened;
     public event Func<Task>? FileSaving;
-
     public MainPageModel()
     {
         foreach (var rw in Settings.RecentWorkspaces)
@@ -107,13 +93,14 @@ public sealed partial class MainPageModel : ObservableObject
         }
         _ = CheckToolchainAsync();
     }
-
-    private async Task CheckToolchainAsync()
+    public async Task CheckToolchainAsync()
     {
         try
         {
             await AutoUpdaterService.CheckForUpdatesAsync(msg => Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = msg));
-            await ToolchainService.InstallMinGWAsync(msg => Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = msg));
+            await CidelEngineService.Instance.CheckAndInstallEngineAsync(msg => Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = msg));
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = "Запуск CIDEL Engine...");
+            await CidelEngineService.Instance.StartEngineAsync();
         }
         catch (Exception ex)
         {
@@ -129,8 +116,6 @@ public sealed partial class MainPageModel : ObservableObject
                 {
                     if (Program.StartupArgs != null && Program.StartupArgs.Length > 0)
                     {
-                        IsWslWorkspace = Program.StartupArgs.Contains("--wsl");
-
                         var pathArg = Program.StartupArgs[0];
                         if (pathArg != "--wsl" && Directory.Exists(pathArg))
                         {
@@ -149,9 +134,37 @@ public sealed partial class MainPageModel : ObservableObject
             });
         }
     }
+    [ObservableProperty]
+    public partial bool IsSplitView { get; set; } = false;
 
+    public int ActiveTargetGroup { get; set; } = 0;
+
+    [ObservableProperty]
+    public partial EditorTab? ActiveLeftTab { get; set; }
+
+    [ObservableProperty]
+    public partial EditorTab? ActiveRightTab { get; set; }
+
+    public ObservableCollection<EditorTab> LeftTabs { get; set; } = [];
+    public ObservableCollection<EditorTab> RightTabs { get; set; } = [];
+
+    [RelayCommand]
+    private void ToggleSplitView() => IsSplitView = !IsSplitView;
+
+    [RelayCommand]
+    private void MoveTabToOtherGroup(EditorTab tab)
+    {
+        if (tab == null)
+        {
+            return;
+        }
+
+        if (LeftTabs.Contains(tab))
+        { _ = LeftTabs.Remove(tab); RightTabs.Add(tab); ActiveRightTab = tab; }
+        else if (RightTabs.Contains(tab))
+        { _ = RightTabs.Remove(tab); LeftTabs.Add(tab); ActiveLeftTab = tab; }
+    }
     public bool IsSshWorkspace => WorkspacePath?.StartsWith("sftp://") == true || WorkspacePath?.StartsWith("ssh://") == true;
-
     public string? WorkspacePath
     {
         get => _workspacePath;
@@ -162,13 +175,10 @@ public sealed partial class MainPageModel : ObservableObject
                 if (!string.IsNullOrEmpty(value))
                 {
                     CurrentState = AppState.Editor;
-
                     if (value.StartsWith(@"\\wsl$\") || value.StartsWith(@"\\wsl.localhost\"))
                     {
-                        IsWslWorkspace = true;
                     }
-
-                    if (IsWslWorkspace)
+                    if (false)
                     {
                         var distro = "WSL";
                         var parts = value.Split('\\', StringSplitOptions.RemoveEmptyEntries);
@@ -176,7 +186,6 @@ public sealed partial class MainPageModel : ObservableObject
                         {
                             distro = $"WSL: {parts[1]}";
                         }
-
                         RemoteStatusText = distro;
                         RemoteStatusColor = "#0078D7";
                     }
@@ -190,7 +199,6 @@ public sealed partial class MainPageModel : ObservableObject
                         RemoteStatusText = "Локально";
                         RemoteStatusColor = "#9061F9";
                     }
-
                     OnPropertyChanged(nameof(IsWorkspaceOpen));
                     OnPropertyChanged(nameof(IsSshWorkspace));
                     _ = Settings.RecentWorkspaces.Remove(value);
@@ -200,7 +208,6 @@ public sealed partial class MainPageModel : ObservableObject
                         Settings.RecentWorkspaces.RemoveAt(Settings.RecentWorkspaces.Count - 1);
                     }
                     Settings.Save();
-
                     _ = LoadWorkspaceAsync(value);
                 }
                 else
@@ -212,7 +219,6 @@ public sealed partial class MainPageModel : ObservableObject
             }
         }
     }
-
     private async Task LoadWorkspaceAsync(string path)
     {
         try
@@ -234,7 +240,6 @@ public sealed partial class MainPageModel : ObservableObject
                 await OpenFileAsync(path);
                 return;
             }
-
             IsSidebarVisible = true;
             foreach (var r in WorkspaceRoots)
             {
@@ -244,7 +249,6 @@ public sealed partial class MainPageModel : ObservableObject
                 }
             }
             WorkspaceRoots.Clear();
-
             var workspaceFile = path;
             if (Directory.Exists(path))
             {
@@ -254,7 +258,6 @@ public sealed partial class MainPageModel : ObservableObject
                     workspaceFile = possibleConfig;
                 }
             }
-
             if (File.Exists(workspaceFile) && workspaceFile.EndsWith(".cide-workspace"))
             {
                 var json = await File.ReadAllTextAsync(workspaceFile);
@@ -303,7 +306,6 @@ public sealed partial class MainPageModel : ObservableObject
                 wsRoot.RootNode = rootNode;
                 WorkspaceRoots.Add(wsRoot);
             }
-
             ExplorerTitle = "ГЛОБАЛЬНЫЙ WORKSPACE";
             RebuildFlatTree();
             StatusText = $"Открыт workspace";
@@ -315,7 +317,6 @@ public sealed partial class MainPageModel : ObservableObject
             StatusText = $"Ошибка загрузки рабочей области: {ex.Message}";
         }
     }
-
     [RelayCommand]
     private void OpenRecentWorkspace(string path)
     {
@@ -331,7 +332,6 @@ public sealed partial class MainPageModel : ObservableObject
             Settings.Save();
         }
     }
-
     [RelayCommand]
     private async Task OpenFolderAsync()
     {
@@ -341,7 +341,6 @@ public sealed partial class MainPageModel : ObservableObject
             WorkspacePath = path;
         }
     }
-
     [RelayCommand]
     private async Task OpenSolutionAsync()
     {
@@ -351,7 +350,6 @@ public sealed partial class MainPageModel : ObservableObject
             WorkspacePath = path;
         }
     }
-
     [RelayCommand]
     private async Task CreateCppProjectAsync()
     {
@@ -364,10 +362,8 @@ public sealed partial class MainPageModel : ObservableObject
         {
             return;
         }
-
         var dialog = new Views.CreateCppProjectDialog();
         var result = await dialog.ShowDialog<Views.CppProjectResult>(desktop.MainWindow);
-
         if (result != null)
         {
             try
@@ -392,7 +388,6 @@ public sealed partial class MainPageModel : ObservableObject
             }
         }
     }
-
     [RelayCommand]
     private async Task CreateCsharpProjectAsync()
     {
@@ -405,10 +400,8 @@ public sealed partial class MainPageModel : ObservableObject
         {
             return;
         }
-
         var dialog = new Views.CreateCsharpProjectDialog();
         var result = await dialog.ShowDialog<Views.CsharpProjectResult>(desktop.MainWindow);
-
         if (result != null)
         {
             try
@@ -424,12 +417,10 @@ public sealed partial class MainPageModel : ObservableObject
                     slnDir = Path.Combine(result.BasePath, result.ProjectName);
                     _ = Directory.CreateDirectory(slnDir);
                 }
-
                 var tcs = new TaskCompletionSource();
                 var processArgs = result.SameFolder
                     ? $"new {result.TemplateShortName} -n {result.ProjectName} -o \"{slnDir}\""
                     : $"new {result.TemplateShortName} -n {result.ProjectName} -o \"{Path.Combine(slnDir, result.ProjectName)}\"";
-
                 var createProcess = new System.Diagnostics.Process
                 {
                     StartInfo = new System.Diagnostics.ProcessStartInfo
@@ -441,7 +432,6 @@ public sealed partial class MainPageModel : ObservableObject
                     },
                     EnableRaisingEvents = true
                 };
-
                 createProcess.Exited += (s, e) => tcs.SetResult();
                 _ = createProcess.Start();
                 await tcs.Task;
@@ -462,7 +452,6 @@ public sealed partial class MainPageModel : ObservableObject
                     slnProcess.Exited += (s, e) => slnTcs.SetResult();
                     _ = slnProcess.Start();
                     await slnTcs.Task;
-
                     var addTcs = new TaskCompletionSource();
                     var addProcess = new System.Diagnostics.Process
                     {
@@ -487,7 +476,6 @@ public sealed partial class MainPageModel : ObservableObject
             }
         }
     }
-
     [RelayCommand]
     private async Task CloneRepositoryAsync()
     {
@@ -496,38 +484,31 @@ public sealed partial class MainPageModel : ObservableObject
         {
             return;
         }
-
         var urlDialog = new Views.InputDialog("Клон репозитория", "Введите URL Git-репозитория:");
         var url = await urlDialog.ShowDialog<string>(desktop.MainWindow);
         if (string.IsNullOrWhiteSpace(url))
         {
             return;
         }
-
         var topLevel = TopLevel.GetTopLevel(desktop.MainWindow);
         if (topLevel == null)
         {
             return;
         }
-
         var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
         {
             Title = "Выберите папку для клонирования"
         });
-
         var folder = (folders != null && folders.Count > 0) ? folders[0].Path.LocalPath : null;
         if (string.IsNullOrWhiteSpace(folder))
         {
             return;
         }
-
         try
         {
             StatusText = "Клонирование репозитория...";
             CurrentState = AppState.Loading;
-
             await GitService.CloneRepositoryAsync(url, folder, msg => Avalonia.Threading.Dispatcher.UIThread.Post(() => StatusText = $"Git: {msg}"));
-
             StatusText = "Клонирование завершено!";
             await LoadWorkspaceAsync(folder);
         }
@@ -537,7 +518,6 @@ public sealed partial class MainPageModel : ObservableObject
             CurrentState = AppState.Welcome;
         }
     }
-
     [RelayCommand]
     private async Task ConnectSshAsync()
     {
@@ -550,10 +530,8 @@ public sealed partial class MainPageModel : ObservableObject
         {
             return;
         }
-
         var dialog = new Views.SshConnectionDialog();
         var info = await dialog.ShowDialog<SshConnectionInfo>(desktop.MainWindow);
-
         if (info != null)
         {
             try
@@ -561,7 +539,6 @@ public sealed partial class MainPageModel : ObservableObject
                 StatusText = "Подключение к SSH (может занять время)...";
                 var provider = new SshFileSystemProvider(info);
                 await Task.Run(provider.Connect);
-
                 var wsRoot = new WorkspaceRoot
                 {
                     Name = $"☁️ Сервер (SSH) {info.Host}",
@@ -569,10 +546,8 @@ public sealed partial class MainPageModel : ObservableObject
                 };
                 var rootNode = await WorkspaceService.BuildFolderTreeAsync(wsRoot, info.RootPath, $"☁️ Сервер (SSH) {info.Host}", FileNodeKind.WorkspaceRoot);
                 wsRoot.RootNode = rootNode;
-
                 WorkspaceRoots.Add(wsRoot);
-
-                WorkspacePath = info.RootPath; // for legacy compat
+                WorkspacePath = info.RootPath;
                 CurrentState = AppState.Editor;
                 IsSidebarVisible = true;
                 ExplorerTitle = "ГЛОБАЛЬНЫЙ WORKSPACE";
@@ -585,7 +560,6 @@ public sealed partial class MainPageModel : ObservableObject
             }
         }
     }
-
 #pragma warning disable CA1822
     [RelayCommand]
     private void ShowServerLoad()
@@ -593,7 +567,6 @@ public sealed partial class MainPageModel : ObservableObject
         var window = new Views.ServerLoadWindow();
         window.Show();
     }
-
     [RelayCommand]
     private async Task SelectNodeAsync(FileNode? node)
     {
@@ -601,7 +574,6 @@ public sealed partial class MainPageModel : ObservableObject
         {
             return;
         }
-
         if (node.Kind == FileNodeKind.File)
         {
             await OpenFileAsync(node.FullPath, node.Root);
@@ -630,7 +602,6 @@ public sealed partial class MainPageModel : ObservableObject
             }
         }
     }
-
     private async Task ToggleNodeAsync(FileNode node)
     {
         if (!node.IsPopulated)
@@ -640,14 +611,12 @@ public sealed partial class MainPageModel : ObservableObject
                 await WorkspaceService.FillChildrenAsync(node.Root, node, node.FullPath, node.Depth + 1);
             }
         }
-
         node.IsExpanded = !node.IsExpanded;
         var index = FlatTree.IndexOf(node);
         if (index < 0)
         {
             return;
         }
-
         if (node.IsExpanded)
         {
             var insertIndex = index + 1;
@@ -661,7 +630,6 @@ public sealed partial class MainPageModel : ObservableObject
             }
         }
     }
-
     private void InsertNodeChildren(FileNode node, ref int insertIndex)
     {
         foreach (var child in node.Children)
@@ -673,8 +641,7 @@ public sealed partial class MainPageModel : ObservableObject
             }
         }
     }
-
-    private async Task OpenFileAsync(string path, WorkspaceRoot? root = null)
+    public async Task OpenFileAsync(string path, WorkspaceRoot? root = null)
     {
         var existing = Tabs.FirstOrDefault(t => t.FilePath == path);
         if (existing != null)
@@ -682,7 +649,6 @@ public sealed partial class MainPageModel : ObservableObject
             await ActivateTabAsync(existing);
             return;
         }
-
         var mode = FileTypeHelper.GetDisplayMode(path);
         if (mode == FileDisplayMode.Executable)
         {
@@ -701,14 +667,11 @@ public sealed partial class MainPageModel : ObservableObject
             StatusText = "Готов";
             return;
         }
-
         StatusText = $"Открытие: {Path.GetFileName(path)}";
-
         try
         {
             var provider = root?.Provider ?? new LocalFileSystemProvider();
             var content = mode == FileDisplayMode.Binary ? string.Empty : await WorkspaceService.ReadFileAsync(provider, path);
-
             var tab = new EditorTab { Root = root, FilePath = path, Content = content, DisplayMode = mode };
             Tabs.Add(tab);
             await ActivateTabAsync(tab);
@@ -720,7 +683,7 @@ public sealed partial class MainPageModel : ObservableObject
         }
     }
     [RelayCommand]
-    private async Task ActivateTabAsync(EditorTab? tab)
+    public async Task ActivateTabAsync(EditorTab? tab)
     {
         if (tab is null)
         {
@@ -736,12 +699,10 @@ public sealed partial class MainPageModel : ObservableObject
                 ActiveTab.IsModified = false;
             }
         }
-
         foreach (var t in Tabs)
         {
             t.IsActive = false;
         }
-
         tab.IsActive = true;
         ActiveTab = tab;
         Breadcrumbs = tab.FilePath
@@ -750,7 +711,6 @@ public sealed partial class MainPageModel : ObservableObject
             .Replace("\\", " > ")
             .Replace("/", " > ");
         IsEditorVisible = true;
-
         var monacoLang = FileTypeHelper.GetMonacoLanguage(tab.FilePath);
         FileOpened?.Invoke(tab.Content, monacoLang, tab.DisplayMode);
     }
@@ -761,7 +721,6 @@ public sealed partial class MainPageModel : ObservableObject
         {
             return;
         }
-
         if (tab.IsModified)
         {
             if (Settings.AutoSave)
@@ -770,7 +729,6 @@ public sealed partial class MainPageModel : ObservableObject
                 {
                     await FileSaving.Invoke();
                 }
-
                 var provider = tab.Root?.Provider ?? new LocalFileSystemProvider();
                 await WorkspaceService.SaveFileAsync(provider, tab.FilePath, tab.Content);
             }
@@ -787,7 +745,6 @@ public sealed partial class MainPageModel : ObservableObject
                         {
                             await FileSaving.Invoke();
                         }
-
                         var provider = tab.Root?.Provider ?? new LocalFileSystemProvider();
                         await WorkspaceService.SaveFileAsync(provider, tab.FilePath, tab.Content);
                     }
@@ -808,7 +765,6 @@ public sealed partial class MainPageModel : ObservableObject
         }
         StatusText = "Готов";
     }
-
     [RelayCommand]
     private async Task SaveActiveFileAsync()
     {
@@ -816,20 +772,16 @@ public sealed partial class MainPageModel : ObservableObject
         {
             return;
         }
-
         try
         {
             if (FileSaving != null)
             {
                 await FileSaving.Invoke();
             }
-
             var provider = ActiveTab.Root?.Provider ?? new LocalFileSystemProvider();
             await WorkspaceService.SaveFileAsync(provider, ActiveTab.FilePath, ActiveTab.Content);
-
             ActiveTab.IsModified = false;
             StatusText = $"✅ Сохранено ({DateTime.Now:HH:mm:ss})";
-
             _ = CrossCheckService.AnalyzeAsync(this);
         }
         catch (Exception ex)
@@ -847,12 +799,9 @@ public sealed partial class MainPageModel : ObservableObject
         IsOutputVisible = true;
         CompilerOutput = "";
         await SaveActiveFileAsync();
-
         var targetFile = ActiveTab?.FilePath ?? "";
         await CompileService.RunCompilationAsync(
-            ProjectTypeDisplay,
-            targetFile,
-            WorkspacePath ?? "",
+            null,
             output => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 CompilerOutput += output;
@@ -861,10 +810,8 @@ public sealed partial class MainPageModel : ObservableObject
                     CompilerOutput = string.Concat("...", CompilerOutput.AsSpan(CompilerOutput.Length - 19997));
                 }
             }));
-
         ParseCompilerErrors();
     }
-
     [RelayCommand]
     internal void StopCommand()
     {
@@ -879,25 +826,20 @@ public sealed partial class MainPageModel : ObservableObject
         {
             return;
         }
-
         var targetDir = parent.Kind is FileNodeKind.Folder or FileNodeKind.Project or FileNodeKind.Solution
             ? parent.FullPath
             : Path.GetDirectoryName(parent.FullPath);
-
         if (targetDir == null)
         {
             return;
         }
-
         var desktop = Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
         if (desktop?.MainWindow == null)
         {
             return;
         }
-
         var dialog = new Views.InputDialog("Новый файл", "Введите имя файла:");
         var result = await dialog.ShowDialog<string?>(desktop.MainWindow);
-
         if (!string.IsNullOrWhiteSpace(result))
         {
             var newPath = Path.Combine(targetDir, result);
@@ -914,7 +856,6 @@ public sealed partial class MainPageModel : ObservableObject
             }
         }
     }
-
     [RelayCommand]
     private async Task CreateFolderNodeAsync()
     {
@@ -923,25 +864,20 @@ public sealed partial class MainPageModel : ObservableObject
         {
             return;
         }
-
         var targetDir = parent.Kind is FileNodeKind.Folder or FileNodeKind.Project or FileNodeKind.Solution
             ? parent.FullPath
             : Path.GetDirectoryName(parent.FullPath);
-
         if (targetDir == null)
         {
             return;
         }
-
         var desktop = Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
         if (desktop?.MainWindow == null)
         {
             return;
         }
-
         var dialog = new Views.InputDialog("Новая папка", "Введите имя папки:");
         var result = await dialog.ShowDialog<string?>(desktop.MainWindow);
-
         if (!string.IsNullOrWhiteSpace(result))
         {
             var newPath = Path.Combine(targetDir, result);
@@ -958,7 +894,6 @@ public sealed partial class MainPageModel : ObservableObject
             }
         }
     }
-
     [RelayCommand]
     private async Task RenameNodeAsync()
     {
@@ -967,16 +902,13 @@ public sealed partial class MainPageModel : ObservableObject
         {
             return;
         }
-
         var desktop = Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
         if (desktop?.MainWindow == null)
         {
             return;
         }
-
         var dialog = new Views.InputDialog("Переименование", "Введите новое имя:", node.Name);
         var result = await dialog.ShowDialog<string?>(desktop.MainWindow);
-
         if (!string.IsNullOrWhiteSpace(result) && result != node.Name)
         {
             var dir = Path.GetDirectoryName(node.FullPath);
@@ -984,7 +916,6 @@ public sealed partial class MainPageModel : ObservableObject
             {
                 return;
             }
-
             var newPath = Path.Combine(dir, result);
             try
             {
@@ -996,7 +927,6 @@ public sealed partial class MainPageModel : ObservableObject
                     openTab.FilePath = newPath;
                     OnPropertyChanged(nameof(openTab.DisplayName));
                 }
-
                 StatusText = $"✅ {node.Name} переименован в {result}";
                 await LoadWorkspaceAsync(WorkspacePath);
             }
@@ -1006,7 +936,6 @@ public sealed partial class MainPageModel : ObservableObject
             }
         }
     }
-
     [RelayCommand]
     private async Task DeleteNodeAsync()
     {
@@ -1015,16 +944,13 @@ public sealed partial class MainPageModel : ObservableObject
         {
             return;
         }
-
         var desktop = Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime;
         if (desktop?.MainWindow == null)
         {
             return;
         }
-
         var dialog = new Views.ConfirmDialog("Удаление", $"Вы уверены, что хотите удалить '{node.Name}'?");
         var result = await dialog.ShowDialog<bool>(desktop.MainWindow);
-
         if (result)
         {
             try
@@ -1036,7 +962,6 @@ public sealed partial class MainPageModel : ObservableObject
                 {
                     await CloseTabAsync(openTab);
                 }
-
                 StatusText = $"✅ {node.Name} удален";
                 await LoadWorkspaceAsync(WorkspacePath);
             }
@@ -1046,7 +971,6 @@ public sealed partial class MainPageModel : ObservableObject
             }
         }
     }
-
     private void ParseCompilerErrors()
     {
         CompilerErrors.Clear();
@@ -1083,13 +1007,11 @@ public sealed partial class MainPageModel : ObservableObject
                             }
                         }
                     }
-
                     var msgParts = l.Split("error", 2);
                     if (msgParts.Length < 2)
                     {
                         msgParts = l.Split("warning", 2);
                     }
-
                     if (msgParts.Length == 2)
                     {
                         message = msgParts[1].TrimStart(':', ' ', 's');
@@ -1097,7 +1019,6 @@ public sealed partial class MainPageModel : ObservableObject
                         {
                         }
                     }
-
                     CompilerErrors.Add(new BuildError
                     {
                         Severity = severity,
@@ -1109,16 +1030,13 @@ public sealed partial class MainPageModel : ObservableObject
             }
             catch { }
         }
-
         if (CompilerErrors.Count == 0)
         {
             CompilerErrors.Add(new BuildError { Severity = BuildErrorSeverity.Info, Message = "Сборка завершена (ошибок нет)" });
         }
     }
-
     [RelayCommand]
     internal async Task BuildCommandAsync() => await RunCommandAsync();
-
     [RelayCommand]
     private async Task FormatCodeAsync()
     {
@@ -1126,7 +1044,6 @@ public sealed partial class MainPageModel : ObservableObject
         {
             return;
         }
-
         IsBusy = true;
         BusyText = "Запуск движка форматирования...";
         try
@@ -1159,7 +1076,6 @@ public sealed partial class MainPageModel : ObservableObject
                     StatusText = "Локальный clang-format отключен в настройках";
                     return;
                 }
-
                 await SaveActiveFileAsync();
                 StatusText = "Форматирование C/C++...";
                 BusyText = "Очистка кода (clang-format)...";
@@ -1189,7 +1105,6 @@ public sealed partial class MainPageModel : ObservableObject
                     StatusText = $"Ошибка clang-format: {ex.Message}";
                 }
             }
-
             if (formatted)
             {
                 var temp = ActiveTab;
@@ -1203,7 +1118,6 @@ public sealed partial class MainPageModel : ObservableObject
             IsBusy = false;
         }
     }
-
     [RelayCommand]
     private void RemoveComments()
     {
@@ -1216,7 +1130,6 @@ public sealed partial class MainPageModel : ObservableObject
         var lineComments = @"//.*";
         var strings = @"""(?:\\.|[^""])*""";
         var verbatimStrings = @"@""(?:""""|[^""])*""";
-
         var pattern = $"{blockComments}|{lineComments}|{strings}|{verbatimStrings}";
         ActiveTab.Content = System.Text.RegularExpressions.Regex.Replace(text, pattern, me => me.Value.StartsWith("/*") || me.Value.StartsWith("//") ? "" : me.Value);
         ActiveTab.IsModified = true;
@@ -1230,20 +1143,17 @@ public sealed partial class MainPageModel : ObservableObject
         {
             return;
         }
-
         if (File.Exists(path))
         {
             ProjectTypeDisplay = path.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".hpp", StringComparison.OrdinalIgnoreCase) ? "C++ Project" : "C Project";
             return;
         }
-
         if (Directory.Exists(path))
         {
             var dir = new DirectoryInfo(path);
             var hasMakefile = dir.GetFiles("Makefile", SearchOption.TopDirectoryOnly).Length > 0;
             var cppCount = dir.GetFiles("*.cpp", SearchOption.AllDirectories).Length;
             var cCount = dir.GetFiles("*.c", SearchOption.AllDirectories).Length;
-
             ProjectTypeDisplay = hasMakefile ? "Makefile" : cppCount > cCount ? "C++ Project" : cCount > 0 ? "C Project" : "Unknown Project";
         }
     }
@@ -1259,14 +1169,12 @@ public sealed partial class MainPageModel : ObservableObject
         }
         SelectedTerminalProfile = TerminalProfiles[0];
     }
-
     partial void OnSelectedBuildProfileChanged(string value)
     {
         if (string.IsNullOrEmpty(WorkspacePath))
             return;
         var dir = new DirectoryInfo(WorkspacePath);
         BuildTargets.Clear();
-
         if (value == "Проект C#")
         {
             BuildTargets.Add("Основной проект");
@@ -1295,13 +1203,11 @@ public sealed partial class MainPageModel : ObservableObject
             foreach (var f in dir.GetFiles("*.sh", SearchOption.AllDirectories))
                 BuildTargets.Add(f.Name);
         }
-
         if (BuildTargets.Count > 0)
             SelectedBuildTarget = BuildTargets[0];
         else
             SelectedBuildTarget = null;
     }
-
 #pragma warning disable CA1822
     [RelayCommand]
     private async Task OpenSettingsAsync()
@@ -1311,7 +1217,6 @@ public sealed partial class MainPageModel : ObservableObject
         {
             return;
         }
-
         var dialog = new Views.SettingsDialog();
         await dialog.ShowDialog(desktop.MainWindow);
     }

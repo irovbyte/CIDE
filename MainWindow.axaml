@@ -1,7 +1,8 @@
-<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:CIDE.Views"
         xmlns:vm="clr-namespace:CIDE.PageModels"
+        xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
         x:DataType="vm:MainPageModel"
         x:Class="CIDE.MainWindow"
         Title="CIDE"
@@ -16,41 +17,10 @@
     <Grid x:Name="JellyContainer" RowDefinitions="Auto, *" Margin="0,35,0,0">
 
         <!-- Toolbar (Floating Island) -->
-        <Border Grid.Row="0" IsVisible="{Binding IsWorkspaceOpen}" Classes="glowOnHover" Background="{DynamicResource BgSurface}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="12" Margin="8,8,8,4" Height="46" BoxShadow="0 4 15 0 #33000000">
-            <Grid ColumnDefinitions="Auto, *, Auto">
-                <!-- Left: Tools -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" Margin="6,0,0,0" VerticalAlignment="Center">
-                    <Button Classes="subtle fluid" Command="{Binding GoBackCommand}" ToolTip.Tip="Назад">
-                        <TextBlock Text="⬅ Назад" FontSize="13"/>
-                    </Button>
-                    <Button Classes="subtle fluid" Content="⚙️ Настройки" FontSize="13" ToolTip.Tip="Настройки" Command="{Binding OpenSettingsCommand}"/>
-                    <Button Classes="subtle fluid" Content="📊 Нагрузка сервера" FontSize="13" ToolTip.Tip="Диспетчер задач SSH" Command="{Binding ShowServerLoadCommand}" IsVisible="{Binding IsSshWorkspace}"/>
-                    <Button Classes="subtle fluid" Content="🧹 Чистка кода" FontSize="13" ToolTip.Tip="Форматировать код" Command="{Binding FormatCodeCommand}"/>
-                    <Button Classes="subtle fluid" Content="💬 Убрать комменты" FontSize="13" ToolTip.Tip="Удалить комментарии" Command="{Binding RemoveCommentsCommand}"/>
-                </StackPanel>
-
-                <!-- Right: Build Controls -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsWorkspaceOpen}" VerticalAlignment="Center" Margin="0,0,6,0">
-                    <Button Classes="subtle fluid" Command="{Binding RunCommandCommand}" Margin="0,0,0,0">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <TextBlock Text="▶" Foreground="#4CAF50" FontSize="14" VerticalAlignment="Center"/>
-                            <TextBlock Text="Run" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-                    
-                    <!-- НОВАЯ КНОПКА STOP -->
-                    <Button Classes="subtle fluid" Command="{Binding StopCommandCommand}" Margin="0,0,10,0" ToolTip.Tip="Принудительно остановить процесс">
-                        <TextBlock Text="⏹" Foreground="#FF5555" FontSize="14" VerticalAlignment="Center"/>
-                    </Button>
-                    <Button Classes="subtle fluid" Command="{Binding ToggleOutputCommand}" Padding="12,4" MinHeight="28" CornerRadius="4">
-                        <TextBlock Text="Terminal" FontSize="12" VerticalAlignment="Center"/>
-                    </Button>
-                </StackPanel>
-            </Grid>
-        </Border>
+        <views:ToolbarView Grid.Row="0" />
 
         <!-- Main Content -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="1" DragDrop.AllowDrop="True">
             <TransitioningContentControl>
                 <TransitioningContentControl.PageTransition>
                     <!-- Плавный переход в 300мс -->
@@ -74,7 +44,7 @@
 
                     <!-- САЙДБАР: Убрана жесткая ширина (Width="250") -->
                     <Border x:Name="SidebarPanel" Grid.Column="0" Background="Transparent" BorderThickness="0" ClipToBounds="True">
-                        <views:SidebarView />
+                        <views:SidebarView DataContext="{Binding}" />
                     </Border>
 
                     <!-- СПЛИТТЕР: Добавлено правильное растягивание и курсор -->
@@ -98,15 +68,50 @@
                                         <views:TerminalView x:Name="MainTerminalView" Margin="0,4,0,0" />
                                     </TabItem>
                                     <TabItem Header="Вывод" FontSize="12">
-                                        <ScrollViewer x:Name="OutputScrollViewer" Margin="4" Padding="8">
-                                            <SelectableTextBlock FontFamily="Cascadia Code, Consolas, monospace" FontSize="13" Foreground="{DynamicResource FgPrimary}" TextWrapping="Wrap" Text="{Binding CompilerOutput}"/>
-                                        </ScrollViewer>
+                                        <AvaloniaEdit:TextEditor
+                                            x:Name="OutputEditor"
+                                            IsReadOnly="True"
+                                            ShowLineNumbers="False"
+                                            WordWrap="True"
+                                            FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                                            FontSize="13"
+                                            Background="Transparent"
+                                            Foreground="{DynamicResource FgPrimary}"
+                                            HorizontalScrollBarVisibility="Disabled"
+                                            VerticalScrollBarVisibility="Auto"
+                                            Margin="4"/>
                                     </TabItem>
                                     <TabItem Header="Список ошибок" FontSize="12">
-                                        <ListBox ItemsSource="{Binding CompilerErrors}" Background="Transparent" Foreground="{DynamicResource FgPrimary}" Margin="4" BorderThickness="0">
+                                        <ListBox x:Name="ErrorListBox"
+                                                 ItemsSource="{Binding CompilerErrors}"
+                                                 Background="Transparent"
+                                                 Foreground="{DynamicResource FgPrimary}"
+                                                 Margin="4" BorderThickness="0"
+                                                 DoubleTapped="OnErrorDoubleTapped">
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
-                                                    <TextBlock Text="{Binding DisplayText}" Foreground="{Binding Color}" TextWrapping="Wrap" FontFamily="Cascadia Code, Consolas, monospace" FontSize="12"/>
+                                                    <Grid ColumnDefinitions="Auto, *, Auto" Margin="0,2">
+                                                        <TextBlock Grid.Column="0"
+                                                                   Text="{Binding SeverityIcon}"
+                                                                   Foreground="{Binding Color}"
+                                                                   FontSize="13"
+                                                                   VerticalAlignment="Center"
+                                                                   Margin="0,0,6,0"/>
+                                                        <TextBlock Grid.Column="1"
+                                                                   Text="{Binding DisplayText}"
+                                                                   Foreground="{Binding Color}"
+                                                                   TextWrapping="Wrap"
+                                                                   FontFamily="Cascadia Code, Consolas, monospace"
+                                                                   FontSize="12"
+                                                                   VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="2"
+                                                                   Text="{Binding LocationText}"
+                                                                   Foreground="{DynamicResource FgSecondary}"
+                                                                   FontSize="11"
+                                                                   VerticalAlignment="Center"
+                                                                   Margin="8,0,0,0"
+                                                                   IsVisible="{Binding HasLocation}"/>
+                                                    </Grid>
                                                 </DataTemplate>
                                             </ListBox.ItemTemplate>
                                         </ListBox>
@@ -139,30 +144,7 @@
                 </Grid>
 
                 <!-- Status Bar -->
-                <Border Grid.Row="1" Background="{Binding RemoteStatusColor}" CornerRadius="0">
-                    <Grid ColumnDefinitions="Auto, Auto, *, Auto, Auto, Auto" Margin="14,0">
-                        
-                        <!-- Левая кнопка статуса (Локально / WSL / SSH) -->
-                        <!-- Мы используем Margin="0", а цвет берем из модели, но чуть темнее -->
-                        <Border Grid.Column="0" Background="#33000000" CornerRadius="2" Padding="8,2" VerticalAlignment="Center" Margin="0,2">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="&gt;&lt;" Foreground="White" FontSize="10" FontWeight="Bold" FontFamily="Consolas"/>
-                                <TextBlock Text="{Binding RemoteStatusText}" Foreground="White" FontSize="10" FontWeight="Bold" />
-                            </StackPanel>
-                        </Border>
-                        
-                        <!-- Выбранный профиль -->
-                        <Border Grid.Column="1" Background="#33000000" CornerRadius="2" Padding="6,2" VerticalAlignment="Center" Margin="8,2">
-                            <TextBlock Text="{Binding SelectedBuildProfile}" Foreground="White" FontSize="10" FontWeight="Bold" />
-                        </Border>
-
-                        <TextBlock Grid.Column="2" Text="{Binding StatusText}" Foreground="White" Opacity="0.9" FontSize="11" VerticalAlignment="Center" Margin="16,0,0,0" />
-                        
-                        <TextBlock Grid.Column="3" Text="{Binding CursorPosition}" Foreground="#E0D4FC" FontSize="11" VerticalAlignment="Center" Margin="0,0,16,0" />
-                        <TextBlock Grid.Column="4" Text="LF | UTF-8" Foreground="#E0D4FC" FontSize="11" VerticalAlignment="Center" Margin="0,0,16,0" />
-                        <TextBlock Grid.Column="5" Text="CIDE Avalonia v2.0" Foreground="#E0D4FC" FontSize="11" VerticalAlignment="Center" />
-                    </Grid>
-                </Border>
+                <views:StatusBarView Grid.Row="1" />
             </Grid>
                     </Panel>
                 </TransitioningContentControl.Content>
@@ -170,3 +152,7 @@
         </Grid>
     </Grid>
 </Window>
+
+
+
+

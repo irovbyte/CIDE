@@ -4,22 +4,17 @@ using CIDE.Models;
 using CIDE.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-
 namespace CIDE.PageModels;
 
 public partial class SshConnectionViewModel : ObservableObject
 {
     [ObservableProperty]
     public partial ObservableCollection<SshConnectionInfo> Connections { get; set; } = [];
-
     [ObservableProperty]
     public partial SshConnectionInfo? SelectedConnection { get; set; }
-
     [ObservableProperty]
     public partial bool IsPasswordVisible { get; set; }
-
     public SshConnectionViewModel() => LoadConnections();
-
     private void LoadConnections()
     {
         Connections = new ObservableCollection<SshConnectionInfo>(SettingsService.Instance.SavedSshConnections);
@@ -32,7 +27,6 @@ public partial class SshConnectionViewModel : ObservableObject
             CreateNewConnection();
         }
     }
-
     partial void OnSelectedConnectionChanged(SshConnectionInfo? value)
     {
         if (value != null)
@@ -40,7 +34,6 @@ public partial class SshConnectionViewModel : ObservableObject
             IsPasswordVisible = value.UsePassword;
         }
     }
-
     [RelayCommand]
     private void CreateNewConnection()
     {
@@ -48,7 +41,6 @@ public partial class SshConnectionViewModel : ObservableObject
         Connections.Add(newConn);
         SelectedConnection = newConn;
     }
-
     [RelayCommand]
     private void DeleteConnection(SshConnectionInfo? info)
     {
@@ -56,7 +48,6 @@ public partial class SshConnectionViewModel : ObservableObject
         {
             return;
         }
-
         _ = Connections.Remove(info);
         if (SelectedConnection == info)
         {
@@ -64,7 +55,6 @@ public partial class SshConnectionViewModel : ObservableObject
         }
         SaveConnections();
     }
-
     public void SaveConnections()
     {
         SettingsService.Instance.SavedSshConnections = [.. Connections];

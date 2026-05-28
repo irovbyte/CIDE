@@ -1,7 +1,6 @@
 using System;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Indentation;
-
 namespace CIDE.Helpers;
 
 public class SmartIndentationStrategy : IIndentationStrategy
@@ -12,7 +11,6 @@ public class SmartIndentationStrategy : IIndentationStrategy
         {
             return;
         }
-
         var prevLine = line.PreviousLine;
         var prevText = document.GetText(prevLine);
         var indent = "";
@@ -33,7 +31,6 @@ public class SmartIndentationStrategy : IIndentationStrategy
         }
         document.Insert(line.Offset, indent);
     }
-
     public void IndentLines(TextDocument document, int beginLine, int endLine)
     {
         for (var i = beginLine; i <= endLine; i++)

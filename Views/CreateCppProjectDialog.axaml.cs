@@ -3,7 +3,6 @@ using System.IO;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using CIDE.Services;
-
 namespace CIDE.Views;
 
 public class CppProjectResult
@@ -12,7 +11,6 @@ public class CppProjectResult
     public string FullPath { get; set; } = "";
     public bool IsCpp { get; set; }
 }
-
 public partial class CreateCppProjectDialog : Window
 {
     public CreateCppProjectDialog()
@@ -31,7 +29,6 @@ public partial class CreateCppProjectDialog : Window
                 }
             };
     }
-
     private async void BrowseButtonClickAsync(object? sender, RoutedEventArgs e)
     {
         var provider = StorageProvider;
@@ -40,13 +37,11 @@ public partial class CreateCppProjectDialog : Window
             Title = "Выберите папку для проекта",
             AllowMultiple = false
         });
-
         if (result != null && result.Count > 0)
         {
             ProjectPathTextBox.Text = result[0].Path.LocalPath;
         }
     }
-
     private void CreateButton_Click(object? sender, RoutedEventArgs e)
     {
         var name = ProjectNameTextBox.Text?.Trim();
@@ -55,10 +50,8 @@ public partial class CreateCppProjectDialog : Window
         {
             return;
         }
-
         var fullPath = Path.Combine(basePath, name);
         var isCpp = LanguageComboBox.SelectedIndex == 1;
-
         Close(new CppProjectResult { Name = name, FullPath = fullPath, IsCpp = isCpp });
     }
 }

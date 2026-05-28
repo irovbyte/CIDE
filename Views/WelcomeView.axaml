@@ -1,8 +1,13 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:CIDE.PageModels"
+             xmlns:vm="clr-namespace:CIDE.PageModels"
+             xmlns:helpers="clr-namespace:CIDE.Helpers"
              x:DataType="vm:MainPageModel"
              x:Class="CIDE.Views.WelcomeView">
+
+    <UserControl.Resources>
+        <helpers:IconPathConverter x:Key="IconConverter"/>
+    </UserControl.Resources>
 
     <UserControl.Styles>
         <!-- Staggered card entrance: Card 1 -->
@@ -126,9 +131,12 @@
                             <Border Grid.Column="0" Classes="hoverZone card cardLeft" Opacity="0">
                             <Border.RenderTransform><TranslateTransform/></Border.RenderTransform>
                             <StackPanel Spacing="15">
-                                <TextBlock Text="&lt;/&gt;" FontFamily="Consolas, Courier New, monospace" FontSize="64" FontWeight="Bold" Foreground="#4EC9B0" HorizontalAlignment="Center" Margin="0,0,0,10">
-                                    <TextBlock.Effect><DropShadowEffect BlurRadius="15" Color="#4EC9B0" Opacity="0.4"/></TextBlock.Effect>
-                                </TextBlock>
+                                <Border Width="80" Height="80" Background="#154EC9B0" BorderBrush="#334EC9B0" BorderThickness="1" CornerRadius="40" HorizontalAlignment="Center" Margin="0,0,0,10" Padding="18">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="20" Color="#4EC9B0" Opacity="0.4"/>
+                                    </Border.Effect>
+                                    <Image Source="{Binding Source='avares://CIDE/Assets/Icons/cpp.svg', Converter={StaticResource IconConverter}}" Width="44" Height="44"/>
+                                </Border>
                                 <TextBlock Text="C/C++" FontSize="28" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
                                 <TextBlock Text="Нативные проекты, CMake и высоконагруженные системы." 
                                            Foreground="#808090" TextWrapping="Wrap" TextAlignment="Center" MinHeight="45" FontSize="15"/>
@@ -147,9 +155,12 @@
                             <Border Grid.Column="2" Classes="hoverZone card cardRight" Opacity="0">
                             <Border.RenderTransform><TranslateTransform/></Border.RenderTransform>
                             <StackPanel Spacing="15">
-                                <TextBlock Text="C#" FontFamily="Consolas, Courier New, monospace" FontSize="64" FontWeight="Bold" Foreground="#C586C0" HorizontalAlignment="Center" Margin="0,0,0,10">
-                                    <TextBlock.Effect><DropShadowEffect BlurRadius="15" Color="#C586C0" Opacity="0.4"/></TextBlock.Effect>
-                                </TextBlock>
+                                <Border Width="80" Height="80" Background="#159C27B0" BorderBrush="#339C27B0" BorderThickness="1" CornerRadius="40" HorizontalAlignment="Center" Margin="0,0,0,10" Padding="18">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="20" Color="#9C27B0" Opacity="0.4"/>
+                                    </Border.Effect>
+                                    <Image Source="{Binding Source='avares://CIDE/Assets/Icons/csharp.svg', Converter={StaticResource IconConverter}}" Width="44" Height="44"/>
+                                </Border>
                                 <TextBlock Text="C# .NET" FontSize="28" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
                                 <TextBlock Text="Кроссплатформенные приложения, UI и микросервисы." 
                                            Foreground="#808090" TextWrapping="Wrap" TextAlignment="Center" MinHeight="45" FontSize="15"/>
@@ -168,9 +179,12 @@
                             <Border Grid.Column="4" Classes="hoverZone card cardRight" Opacity="0">
                             <Border.RenderTransform><TranslateTransform/></Border.RenderTransform>
                             <StackPanel Spacing="15">
-                                <TextBlock Text="&gt;_" FontFamily="Consolas, Courier New, monospace" FontSize="64" FontWeight="Bold" Foreground="#FF9800" HorizontalAlignment="Center" Margin="0,0,0,10">
-                                    <TextBlock.Effect><DropShadowEffect BlurRadius="15" Color="#FF9800" Opacity="0.4"/></TextBlock.Effect>
-                                </TextBlock>
+                                <Border Width="80" Height="80" Background="#15FF9800" BorderBrush="#33FF9800" BorderThickness="1" CornerRadius="40" HorizontalAlignment="Center" Margin="0,0,0,10" Padding="18">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="20" Color="#FF9800" Opacity="0.4"/>
+                                    </Border.Effect>
+                                    <Image Source="{Binding Source='avares://CIDE/Assets/Icons/server.png', Converter={StaticResource IconConverter}}" Width="44" Height="44"/>
+                                </Border>
                                 <TextBlock Text="SSH Сервер" FontSize="28" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
                                 <TextBlock Text="Удаленная разработка. Нулевая нагрузка на ваш компьютер." 
                                            Foreground="#808090" TextWrapping="Wrap" TextAlignment="Center" MinHeight="45" FontSize="15"/>
@@ -212,8 +226,26 @@
                         
                         <TextBlock Text="Нет недавних проектов" Foreground="#5A5A5A" FontSize="14" IsVisible="{Binding !RecentWorkspaces.Count}" HorizontalAlignment="Center" Margin="10,0"/>
                     </StackPanel>
+                                    <!-- Footer: CIDEL Cache Status -->
+                    <Border Grid.Row="2" Margin="0,40,0,0" Padding="15,8"
+                            Background="#1AFFFFFF" CornerRadius="12"
+                            BorderBrush="#33FFFFFF" BorderThickness="1"
+                            HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="15">
+                            <TextBlock Text="CIDEL Engine Cache:" Foreground="{DynamicResource FgMuted}" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding CidelCacheSize}" Foreground="{DynamicResource AccentLight}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <Button Classes="subtle" Command="{Binding ClearCidelCacheCommand}"
+                                    Padding="8,4" CornerRadius="6" ToolTip.Tip="�������� ���">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource FgSecondary}"/>
+                                    <TextBlock Text="Clear" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource FgSecondary}"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
         </Viewbox>
     </Grid>
 </UserControl>
+

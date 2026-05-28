@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using CIDE.Models;
 using Renci.SshNet;
 using Renci.SshNet.Sftp;
-
 namespace CIDE.Services;
 
 public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSystemProvider, IDisposable
@@ -15,9 +14,10 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
     private SshClient? _sshClient;
     private SftpClient? _sftpClient;
     private bool _disposed;
-
     public void Connect()
     {
+        _sftpClient?.Dispose();
+        _sshClient?.Dispose();
         AuthenticationMethod authMethod;
         if (_connectionInfo.UsePassword)
         {
@@ -33,7 +33,6 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
                 var ed25519 = Path.Combine(home, ".ssh", "id_ed25519");
                 keyPath = File.Exists(ed25519) ? ed25519 : rsa;
             }
-
             if (File.Exists(keyPath))
             {
                 var keyFile = new PrivateKeyFile(keyPath);
@@ -44,21 +43,17 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
                 throw new InvalidOperationException($"Ключ не найден: {keyPath}");
             }
         }
-
         var connectionInfo = new ConnectionInfo(
             _connectionInfo.Host,
             _connectionInfo.Port,
             _connectionInfo.Username,
             authMethod
         );
-
         _sshClient = new SshClient(connectionInfo);
         _sshClient.Connect();
-
         _sftpClient = new SftpClient(connectionInfo);
         _sftpClient.Connect();
     }
-
     private async Task EnsureConnectedAsync()
     {
         if (_sftpClient == null || !_sftpClient.IsConnected)
@@ -67,7 +62,6 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
         }
     }
     public SshClient? GetSshClient() => _sshClient;
-
     public async Task<string> ReadFileAsync(string path)
     {
         await EnsureConnectedAsync();
@@ -80,7 +74,6 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
             return reader.ReadToEnd();
         });
     }
-
     public async Task SaveFileAsync(string path, string content)
     {
         await EnsureConnectedAsync();
@@ -94,7 +87,6 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
             _sftpClient!.UploadFile(stream, path, canOverride: true);
         });
     }
-
     public async Task<bool> DirectoryExistsAsync(string path)
     {
         await EnsureConnectedAsync();
@@ -110,7 +102,6 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
             }
         });
     }
-
     public async Task<bool> FileExistsAsync(string path)
     {
         await EnsureConnectedAsync();
@@ -126,7 +117,6 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
             }
         });
     }
-
     public async Task<IEnumerable<FileNodeData>> GetDirectoriesAsync(string path)
     {
         await EnsureConnectedAsync();
@@ -136,7 +126,6 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
             {
                 return [];
             }
-
             var files = _sftpClient.ListDirectory(path);
             return files
                 .Where(f => f.IsDirectory && f.Name != "." && f.Name != ".." && !f.Name.StartsWith('.'))
@@ -144,7 +133,6 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
                 .Select(f => new FileNodeData { Name = f.Name, FullPath = f.FullName });
         });
     }
-
     public async Task<IEnumerable<FileNodeData>> GetFilesAsync(string path)
     {
         await EnsureConnectedAsync();
@@ -154,7 +142,6 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
             {
                 return [];
             }
-
             var files = _sftpClient.ListDirectory(path);
             return files
                 .Where(f => f.IsRegularFile)
@@ -162,19 +149,16 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
                 .Select(f => new FileNodeData { Name = f.Name, FullPath = f.FullName });
         });
     }
-
     public async Task CreateFileAsync(string path)
     {
         await EnsureConnectedAsync();
         await Task.Run(() => _sftpClient!.Create(path).Dispose());
     }
-
     public async Task CreateDirectoryAsync(string path)
     {
         await EnsureConnectedAsync();
         await Task.Run(() => _sftpClient!.CreateDirectory(path));
     }
-
     public async Task DeleteAsync(string path, bool isDirectory)
     {
         await EnsureConnectedAsync();
@@ -190,20 +174,17 @@ public class SshFileSystemProvider(SshConnectionInfo connectionInfo) : IFileSyst
             }
         });
     }
-
     public async Task RenameAsync(string oldPath, string newPath)
     {
         await EnsureConnectedAsync();
         await Task.Run(() => _sftpClient!.RenameFile(oldPath, newPath));
     }
-
     public void Dispose()
     {
         if (_disposed)
         {
             return;
         }
-
         _disposed = true;
         _sftpClient?.Dispose();
         _sshClient?.Dispose();

@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using CIDE.Helpers;
-
 namespace CIDE.Views;
 
 public partial class WelcomeView : UserControl
@@ -11,7 +10,6 @@ public partial class WelcomeView : UserControl
         InitializeComponent();
         AddHandler(PointerPressedEvent, OnPointerPressedAsync, Avalonia.Interactivity.RoutingStrategies.Bubble, true);
     }
-
     private async void OnPointerPressedAsync(object? sender, PointerPressedEventArgs e)
     {
         if (e.Source is Control control)

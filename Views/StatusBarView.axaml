@@ -1,0 +1,124 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:CIDE.PageModels"
+             x:Class="CIDE.Views.StatusBarView"
+             x:DataType="vm:MainPageModel"
+             Height="26">
+
+    <UserControl.Resources>
+        <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets, Noto Color Emoji, Twemoji, DejaVu Sans</FontFamily>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- ИМБА-СТИЛЬ: Карточки статус-бара (Pills) -->
+        <Style Selector="Button.statusPill">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#E0D4FC"/>
+            <!-- Легкий фиолетово-белый оттенок -->
+            <Setter Property="Padding" Value="8,2"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+                    <BrushTransition Property="Foreground" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.statusPill:pointerover">
+            <Setter Property="Background" Value="#33FFFFFF"/>
+            <!-- При наведении загорается стекло -->
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+        <Style Selector="Button.statusPill:pressed">
+            <Setter Property="Background" Value="#22FFFFFF"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- Основной фон (Связан с RemoteStatusColor: Синий для WSL, Фиолетовый для Local) -->
+    <Border Background="{Binding RemoteStatusColor}" CornerRadius="0">
+        <Grid ColumnDefinitions="Auto, *, Auto" Margin="10,0">
+
+            <!-- ЛЕВАЯ ЧАСТЬ (Контекст: Сервер, Git, Проект) -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2">
+
+                <!-- 1. Подключение (Локально / SSH) -->
+                <Button Classes="statusPill" Background="#33000000" ToolTip.Tip="Управление удаленным подключением">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="&#xE74A;" FontFamily="{StaticResource IconFont}" FontSize="12" VerticalAlignment="Center" Margin="0,1,0,0"/>
+                        <TextBlock Text="{Binding RemoteStatusText}"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- 2. Ветка GIT -->
+                <Button Classes="statusPill" ToolTip.Tip="Текущая ветка Git" IsVisible="{Binding IsGitRepository}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="&#xF065;" FontFamily="{StaticResource IconFont}" FontSize="12" VerticalAlignment="Center" Margin="0,1,0,0" Opacity="0.8"/>
+                        <TextBlock Text="{Binding GitBranch}"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Вертикальный разделитель -->
+                <Border Width="1" Height="14" Background="#33FFFFFF" Margin="4,0" IsVisible="{Binding IsGitRepository}"/>
+
+                <!-- 3. Профиль сборки -->
+                <Button Classes="statusPill" ToolTip.Tip="Выбранный профиль сборки">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="&#xE7B8;" FontFamily="{StaticResource IconFont}" FontSize="12" VerticalAlignment="Center" Opacity="0.8"/>
+                        <TextBlock Text="{Binding SelectedBuildProfile, TargetNullValue='Выберите профиль', FallbackValue='Выберите профиль'}" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+
+            <!-- ЦЕНТРАЛЬНАЯ ЧАСТЬ (Уведомления) -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="{Binding StatusText}" Foreground="White" Opacity="0.9" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="500"/>
+            </StackPanel>
+
+            <!-- ПРАВАЯ ЧАСТЬ (Редактор и Курсор) -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
+
+                <!-- 1. Ошибки компиляции (Красный/Желтый цвет) -->
+                <Button Classes="statusPill" ToolTip.Tip="Ошибки компиляции" IsVisible="{Binding CompilerErrors.Count}">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="&#xE783;" FontFamily="{StaticResource IconFont}" FontSize="12" Foreground="#FFB86C" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding CompilerErrors.Count}" Foreground="#FFB86C"/>
+                    </StackPanel>
+                </Button>
+
+                <Border Width="1" Height="14" Background="#33FFFFFF" Margin="4,0" IsVisible="{Binding CompilerErrors.Count}"/>
+
+                <!-- 2. Позиция курсора (Ln, Col) -->
+                <Button Classes="statusPill" ToolTip.Tip="Перейти к строке (Ctrl+G)" IsVisible="{Binding ActiveTab, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <TextBlock Text="{Binding CursorPosition}" />
+                </Button>
+
+                <!-- 3. Отступы (Spaces/Tabs) -->
+                <Button Classes="statusPill" ToolTip.Tip="Размер отступа" IsVisible="{Binding ActiveTab, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <TextBlock Text="{Binding ActiveTab.IndentDescription}" />
+                </Button>
+
+                <!-- 4. Кодировка -->
+                <Button Classes="statusPill" ToolTip.Tip="Кодировка файла" IsVisible="{Binding ActiveTab, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <TextBlock Text="{Binding ActiveTab.Encoding}" />
+                </Button>
+
+                <!-- 5. Концы строк -->
+                <Button Classes="statusPill" ToolTip.Tip="Символы конца строки" IsVisible="{Binding ActiveTab, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <TextBlock Text="{Binding ActiveTab.LineEndings}" />
+                </Button>
+
+                <Border Width="1" Height="14" Background="#33FFFFFF" Margin="4,0"/>
+
+                <!-- 6. Версия IDE -->
+                <Button Classes="statusPill" ToolTip.Tip="О CIDE">
+                    <TextBlock Text="CIDE v2.0" Opacity="0.7"/>
+                </Button>
+
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

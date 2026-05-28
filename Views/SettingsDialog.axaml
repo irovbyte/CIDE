@@ -6,7 +6,7 @@
         Width="550" Height="450"
         WindowStartupLocation="CenterOwner"
         Background="Transparent"
-        WindowDecorations="None"
+        SystemDecorations="None"
         ShowInTaskbar="False">
 
     <Grid Classes="windowFlyIn">
@@ -52,7 +52,7 @@
                                 <CheckBox x:Name="UseLocalClangFormatCheckBox" Content="Использовать clang-format (для C/C++)" Foreground="{DynamicResource FgPrimary}" />
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <TextBlock Text="Путь к clang-format:" Foreground="{DynamicResource FgPrimary}" VerticalAlignment="Center" />
-                                    <TextBox x:Name="ClangFormatPathTextBox" Width="250" PlaceholderText="по умолчанию: clang-format"/>
+                                    <TextBox x:Name="ClangFormatPathTextBox" Width="250" Watermark="по умолчанию: clang-format"/>
                                 </StackPanel>
                             </StackPanel>
                         </TabItem>

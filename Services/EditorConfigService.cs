@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-
 namespace CIDE.Services;
 
 public class EditorConfigSettings
@@ -9,19 +8,16 @@ public class EditorConfigSettings
     public string IndentStyle { get; set; } = "space";
     public int IndentSize { get; set; } = 4;
 }
-
 public static class EditorConfigService
 {
     public static EditorConfigSettings Parse(string workspaceRoot, string filePath)
     {
         var settings = new EditorConfigSettings();
         var editorConfigPath = Path.Combine(workspaceRoot, ".editorconfig");
-
         if (!File.Exists(editorConfigPath))
         {
             return settings;
         }
-
         try
         {
             var lines = File.ReadAllLines(editorConfigPath);
@@ -33,13 +29,11 @@ public static class EditorConfigService
                 {
                     continue;
                 }
-
                 if (trimmed.StartsWith('['))
                 {
                     inAllSection = trimmed == "[*]" || trimmed.EndsWith(Path.GetExtension(filePath) + "]", StringComparison.Ordinal);
                     continue;
                 }
-
                 if (inAllSection)
                 {
                     var parts = trimmed.Split('=', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -47,7 +41,6 @@ public static class EditorConfigService
                     {
                         var key = parts[0].ToLowerInvariant();
                         var value = parts[1].ToLowerInvariant();
-
                         if (key == "indent_style")
                         {
                             settings.IndentStyle = value;
@@ -63,7 +56,6 @@ public static class EditorConfigService
         catch
         {
         }
-
         return settings;
     }
 }

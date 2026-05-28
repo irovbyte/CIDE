@@ -1,6 +1,5 @@
 using System;
 using Avalonia;
-
 namespace CIDE;
 
 internal sealed class Program
@@ -17,7 +16,6 @@ internal sealed class Program
             { File.Delete(oldExe); }
             catch { }
         }
-
         _ = BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
     public static AppBuilder BuildAvaloniaApp()

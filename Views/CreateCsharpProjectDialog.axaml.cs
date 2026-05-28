@@ -7,7 +7,6 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using CIDE.Services;
-
 namespace CIDE.Views;
 
 public class CsharpProjectResult
@@ -18,11 +17,9 @@ public class CsharpProjectResult
     public bool SameFolder { get; set; }
     public string TemplateShortName { get; set; } = "";
 }
-
 public class TemplateViewModel(DotnetTemplateInfo original)
 {
     public DotnetTemplateInfo Original { get; } = original;
-
     public string Name => Original.Name;
     public string ShortName => Original.ShortName;
     public string IconText => Name?.Split(' ', StringSplitOptions.RemoveEmptyEntries) switch
@@ -32,7 +29,44 @@ public class TemplateViewModel(DotnetTemplateInfo original)
         [var first, ..] => first[..Math.Min(2, first.Length)].ToUpperInvariant(),
         _ => "C#"
     };
+    public string IconPath
+    {
+        get
+        {
+            var shortName = ShortName.ToLowerInvariant();
+            var basePath = "avares://CIDE/Assets/Icons";
+            if (shortName.Contains("console"))
+            {
+                return $"{basePath}/shell.png";
+            }
 
+            if (shortName.Contains("test") || shortName.Contains("nunit") || shortName.Contains("xunit") || shortName.Contains("mstest"))
+            {
+                return $"{basePath}/test.svg";
+            }
+
+            if (shortName.Contains("web") || shortName.Contains("blazor") || shortName.Contains("api") || shortName.Contains("grpc"))
+            {
+                return $"{basePath}/html.svg";
+            }
+
+            if (shortName.Contains("classlib") || shortName.Contains("library"))
+            {
+                return $"{basePath}/dotnet.svg";
+            }
+
+            if (shortName.Contains("avalonia"))
+            {
+                return $"{basePath}/avalonia.svg";
+            }
+
+            return shortName.Contains("android")
+                ? $"{basePath}/android.svg"
+                : shortName.Contains("winforms") || shortName.Contains("wpf") || shortName.Contains("maui")
+                ? $"{basePath}/dotnet.svg"
+                : $"{basePath}/csharp.svg";
+        }
+    }
     public List<string> TagList
     {
         get
@@ -53,10 +87,8 @@ public class TemplateViewModel(DotnetTemplateInfo original)
             return [.. list.Distinct()];
         }
     }
-
     public string Description => $"Проект для создания {Name}";
 }
-
 public partial class CreateCsharpProjectDialog : Window
 {
     public CreateCsharpProjectDialog()
@@ -66,7 +98,6 @@ public partial class CreateCsharpProjectDialog : Window
         BrowseButton.Click += BrowseButtonClickAsync;
         CancelButton.Click += (s, e) => Close();
         CreateButton.Click += CreateButton_Click;
-
         var titleBar = this.FindControl<Border>("TitleBarBorder");
         titleBar?.PointerPressed += (s, e) =>
             {
@@ -75,7 +106,6 @@ public partial class CreateCsharpProjectDialog : Window
                     BeginMoveDrag(e);
                 }
             };
-
         ProjectNameTextBox.TextChanged += (s, e) =>
         {
             if (!SameFolderCheckBox.IsChecked.GetValueOrDefault())
@@ -83,10 +113,8 @@ public partial class CreateCsharpProjectDialog : Window
                 SolutionNameTextBox.Text = ProjectNameTextBox.Text;
             }
         };
-
         _ = LoadTemplatesAsync();
     }
-
     private async Task LoadTemplatesAsync()
     {
         var templates = await DotnetTemplateService.GetInstalledTemplatesAsync();
@@ -101,7 +129,6 @@ public partial class CreateCsharpProjectDialog : Window
             }
         });
     }
-
     private async void BrowseButtonClickAsync(object? sender, RoutedEventArgs e)
     {
         var provider = StorageProvider;
@@ -110,13 +137,11 @@ public partial class CreateCsharpProjectDialog : Window
             Title = "Выберите папку для проекта",
             AllowMultiple = false
         });
-
         if (result != null && result.Count > 0)
         {
             ProjectPathTextBox.Text = result[0].Path.LocalPath;
         }
     }
-
     private void CreateButton_Click(object? sender, RoutedEventArgs e)
     {
         var projName = ProjectNameTextBox.Text?.Trim();
@@ -126,12 +151,10 @@ public partial class CreateCsharpProjectDialog : Window
         {
             return;
         }
-
         if (string.IsNullOrEmpty(slnName))
         {
             slnName = projName;
         }
-
         Close(new CsharpProjectResult
         {
             ProjectName = projName,

@@ -2,13 +2,12 @@ name: Release
 
 on:
   push:
-    branches: [ "main", "master" ]
     tags:
       - 'v*'
 
 jobs:
   build-and-release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     permissions:
       contents: write
 
@@ -21,19 +20,33 @@ jobs:
       with:
         dotnet-version: '10.0.x'
 
+    - name: Get Version from Tag
+      id: get_version
+      run: |
+        $TAG = "${{ github.ref_name }}"
+        $VERSION = $TAG.TrimStart('v')
+        echo "APP_VERSION=$VERSION" >> $env:GITHUB_ENV
+
     - name: Publish Windows
-      run: dotnet publish CIDE.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o output/win
+      run: dotnet publish CIDE.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish/win
 
-    - name: Publish Linux
-      run: dotnet publish CIDE.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o output/linux
+    - name: Copy Icon for Installer
+      run: Copy-Item -Path Assets\cide_logo.ico -Destination publish/win/cide_logo.ico
 
-    - name: Upload Release Asset
+    - name: Build Windows Installer (Inno Setup)
+      run: |
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=${{ env.APP_VERSION }} CIDE.iss
+
+    - name: Rename raw exe
+      run: Rename-Item -Path publish/win/CIDE.exe -NewName CIDE_Raw.exe
+
+    - name: Upload Release Assets
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          output/win/CIDE.exe
-          output/linux/CIDE
-        tag_name: latest
-        name: Latest Build
+          Output/CIDE_Setup.exe
+          publish/win/CIDE_Raw.exe
+        name: CIDE Release ${{ github.ref_name }}
+        tag_name: ${{ github.ref_name }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

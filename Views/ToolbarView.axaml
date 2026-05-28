@@ -1,39 +1,122 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:CIDE.PageModels"
-             x:DataType="vm:MainPageModel"
+             xmlns:vm="using:CIDE.PageModels"
              x:Class="CIDE.Views.ToolbarView"
-             Height="50" Background="#2D2D30">
+             x:DataType="vm:MainPageModel">
 
-    <Border BorderBrush="#3E3E42" BorderThickness="0,0,0,1">
-        <Grid ColumnDefinitions="Auto, *, Auto" Margin="15,0">
-            <!-- В Avalonia DataTrigger заменяется либо на Binding свойств, либо на классы. Сделаем простой биндинг -->
-            <StackPanel Orientation="Horizontal" Spacing="10" Grid.Column="0">
-                <Button Command="{Binding GoBackCommand}" 
-                        Background="Transparent" BorderThickness="0"
-                        Foreground="#CCCCCC" FontSize="14" Padding="8,4">
-                    <TextBlock Text="⬅ Назад" />
+    <UserControl.Resources>
+        <!-- Подхватываем наши иконки -->
+        <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets, Noto Color Emoji, Twemoji, DejaVu Sans</FontFamily>
+    </UserControl.Resources>
+
+    <!-- Toolbar (Floating Island) -->
+    <Border IsVisible="{Binding IsWorkspaceOpen}" Classes="glowOnHover" Background="{DynamicResource BgSurface}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="12" Margin="8,8,8,4" Height="46" BoxShadow="0 4 15 0 #33000000">
+        <!-- Делим на 3 зоны: Слева инструменты, По центру Поиск, Справа Запуск -->
+        <Grid ColumnDefinitions="Auto, *, Auto" Margin="10,0">
+
+            <!-- ЛЕВАЯ ЧАСТЬ: Иструменты (Иконки вместо текста) -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+
+                <!-- Кнопка Домой -->
+                <Button Classes="subtle fluid" Command="{Binding GoBackCommand}" ToolTip.Tip="На главную" Width="36" Height="32" CornerRadius="6">
+                    <TextBlock Text="&#xE80F;" FontFamily="{StaticResource IconFont}" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                 </Button>
-                <!-- Settings Button -->
-                <Button Content="⚙️" FontSize="14" Padding="8,4" Background="Transparent" Foreground="#CCCCCC" VerticalAlignment="Center" ToolTip.Tip="Настройки" Command="{Binding OpenSettingsCommand}"/>
-                <Button Content="🧹" FontSize="14" Padding="8,4" Background="Transparent" Foreground="#CCCCCC" VerticalAlignment="Center" ToolTip.Tip="Форматировать код" Command="{Binding FormatCodeCommand}"/>
-                <Button Content="💬" FontSize="14" Padding="8,4" Background="Transparent" Foreground="#CCCCCC" VerticalAlignment="Center" ToolTip.Tip="Удалить комментарии" Command="{Binding RemoveCommentsCommand}"/>
+
+                <!-- Вертикальный разделитель -->
+                <Border Width="1" Height="16" Background="{DynamicResource BorderSubtle}" Margin="6,0"/>
+
+                <Button Classes="subtle fluid" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Настройки" Width="36" Height="32" CornerRadius="6">
+                    <TextBlock Text="&#xE713;" FontFamily="{StaticResource IconFont}" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                </Button>
+
+                <Button Classes="subtle fluid" Command="{Binding ShowServerLoadCommand}" IsVisible="{Binding IsSshWorkspace}" ToolTip.Tip="Диспетчер задач SSH" Width="36" Height="32" CornerRadius="6">
+                    <TextBlock Text="&#xE9F5;" FontFamily="{StaticResource IconFont}" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                </Button>
+
+                <Button Classes="subtle fluid" Command="{Binding FormatCodeCommand}" ToolTip.Tip="Автоформатирование кода (Clang/Dotnet)" Width="36" Height="32" CornerRadius="6">
+                    <TextBlock Text="&#xE81C;" FontFamily="{StaticResource IconFont}" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                </Button>
+
+                <Button Classes="subtle fluid" Command="{Binding RemoveCommentsCommand}" ToolTip.Tip="Очистить от комментариев" Width="36" Height="32" CornerRadius="6">
+                    <TextBlock Text="&#xE8BD;" FontFamily="{StaticResource IconFont}" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                </Button>
             </StackPanel>
-            
-            <StackPanel Orientation="Horizontal" Spacing="10" Grid.Column="2">
-                <ComboBox ItemsSource="{Binding BuildProfiles}" SelectedItem="{Binding SelectedBuildProfile}" VerticalAlignment="Center" Width="150"/>
-                <ComboBox ItemsSource="{Binding BuildTargets}" SelectedItem="{Binding SelectedBuildTarget}" VerticalAlignment="Center" Width="150"/>
-                <Button Command="{Binding RunCommandCommand}" 
-                        Background="#7C3AED" Foreground="White" 
-                        BorderThickness="0" CornerRadius="4" Padding="15,6">
-                    <TextBlock Text="▶ Run" FontWeight="Bold"/>
+
+            <!-- ЦЕНТР: Панель "Быстрых действий" (Как в VS Code) -->
+            <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Button Classes="subtle fluid" Width="300" Height="32" CornerRadius="8" Background="#11FFFFFF" Command="{Binding ShowCommandPaletteCommand}">
+                    <Grid ColumnDefinitions="Auto, *, Auto" Width="280">
+                        <TextBlock Grid.Column="0" Text="&#xE721;" FontFamily="{StaticResource IconFont}" Foreground="{DynamicResource FgMuted}" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="CIDE IDE" Foreground="{DynamicResource FgMuted}" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="Ctrl+P" Foreground="{DynamicResource FgMuted}" FontSize="11" VerticalAlignment="Center" Opacity="0.5"/>
+                    </Grid>
                 </Button>
-                <Button Command="{Binding ToggleOutputCommand}" 
-                        Background="Transparent" BorderBrush="#3E3E42" BorderThickness="1" 
-                        CornerRadius="4" Foreground="#CCCCCC" Padding="10,6">
-                    <TextBlock Text="Terminal" />
+            </StackPanel>
+
+            <!-- ПРАВАЯ ЧАСТЬ: Запуск и Терминал -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+
+                <!-- Единая "Капсула" для выбора профиля и запуска -->
+                <Border Background="#11FFFFFF" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="6" Padding="2">
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+
+                        <!-- Выбор профиля без рамки (сливается с капсулой) -->
+                        <ComboBox ItemsSource="{Binding BuildProfiles}" SelectedItem="{Binding SelectedBuildProfile}" MinWidth="150" FontSize="12" VerticalAlignment="Center" Background="{DynamicResource BgInput}" Foreground="{DynamicResource FgPrimary}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="4">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DisplayName}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                        <!-- Вертикальный разделитель -->
+                        <Border Width="1" Height="16" Background="{DynamicResource BorderSubtle}" Margin="4,0"/>
+
+                        <!-- Кнопка RUN -->
+                        <Button Classes="subtle fluid" Command="{Binding RunCommandCommand}" IsVisible="{Binding !IsRunning}" CornerRadius="4" Height="28" Padding="12,0">
+                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE768;" FontFamily="{StaticResource IconFont}" Foreground="#4CAF50" FontSize="12"/>
+                                <TextBlock Text="Run" FontWeight="SemiBold" FontSize="12"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Кнопка STOP (Появляется, когда работает процесс) -->
+                        <Button Classes="subtle fluid" Command="{Binding StopCommandCommand}" IsVisible="{Binding IsRunning}" ToolTip.Tip="Остановить" CornerRadius="4" Height="28" Padding="12,0">
+                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE71A;" FontFamily="{StaticResource IconFont}" Foreground="#FF5555" FontSize="12"/>
+                                <TextBlock Text="Stop" FontWeight="SemiBold" FontSize="12"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- Отдельная кнопка Терминала -->
+                <Button Classes="subtle fluid" Command="{Binding ToggleOutputCommand}" Height="32" CornerRadius="6" Padding="12,0" Background="#11FFFFFF" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE756;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{DynamicResource FgSecondary}"/>
+                        <TextBlock Text="Terminal" FontSize="12" Foreground="{DynamicResource FgPrimary}"/>
+                    </StackPanel>
                 </Button>
+
+                <!-- Кнопка второго окна -->
+                                <Button Command="{Binding ClearCidelCacheCommand}" Height="32" CornerRadius="6" Padding="12,0" Background="#11FFFFFF" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" Classes="subtle fluid" ToolTip.Tip="Очистить кэш CIDEL">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="#FF5555"/>
+                        <TextBlock Text="Clear Cache" FontSize="12" Foreground="{DynamicResource FgPrimary}"/>
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="SplitScreenBtn" Command="{Binding ToggleSplitViewCommand}" Height="32" CornerRadius="6" Padding="12,0" Background="#11FFFFFF" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" Classes="subtle fluid" ToolTip.Tip="Разделить экран">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE734;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="{DynamicResource FgSecondary}"/>
+                        <TextBlock Text="Split" FontSize="12" Foreground="{DynamicResource FgPrimary}"/>
+                    </StackPanel>
+                </Button>
+
             </StackPanel>
         </Grid>
     </Border>
 </UserControl>
+
+
+

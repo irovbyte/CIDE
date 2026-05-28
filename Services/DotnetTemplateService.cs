@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-
 namespace CIDE.Services;
 
 public class DotnetTemplateInfo
@@ -14,7 +13,6 @@ public class DotnetTemplateInfo
     public string DisplayName => $"{Name} ({ShortName})";
     public string Category => string.IsNullOrEmpty(Tags) ? "Other" : Tags.Split('/')[0];
 }
-
 public static class DotnetTemplateService
 {
     public static async Task<List<DotnetTemplateInfo>> GetInstalledTemplatesAsync()
@@ -34,11 +32,9 @@ public static class DotnetTemplateService
                     CreateNoWindow = true
                 }
             };
-
             _ = process.Start();
             var output = await process.StandardOutput.ReadToEndAsync();
             await process.WaitForExitAsync();
-
             var lines = output.Split('\n').Select(l => l.TrimEnd()).ToList();
             var dashLineIndex = lines.FindIndex(l => l.StartsWith("---", StringComparison.Ordinal) && l.Contains(" ---"));
             if (dashLineIndex >= 0 && dashLineIndex + 1 < lines.Count)
@@ -54,18 +50,15 @@ public static class DotnetTemplateService
                 var col2End = dashLine.IndexOf(' ', col2Start);
                 if (col2End == -1)
                 { return templates; }
-
                 var col3Start = dashLine.IndexOf('-', col2End);
                 if (col3Start == -1)
                 { return templates; }
                 var col3End = dashLine.IndexOf(' ', col3Start);
                 if (col3End == -1)
                 { return templates; }
-
                 var col4Start = dashLine.IndexOf('-', col3End);
                 if (col4Start == -1)
                 { return templates; }
-
                 for (var i = dashLineIndex + 1; i < lines.Count; i++)
                 {
                     var line = lines[i];
@@ -103,7 +96,6 @@ public static class DotnetTemplateService
         catch
         {
         }
-
         return [.. templates.OrderBy(t => t.Name)];
     }
 }

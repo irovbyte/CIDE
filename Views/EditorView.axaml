@@ -1,14 +1,19 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:CIDE.PageModels"
+             xmlns:helpers="clr-namespace:CIDE.Helpers"
              xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
              x:DataType="vm:MainPageModel"
              x:Class="CIDE.Views.EditorView"
              Background="Transparent">
 
+    <UserControl.Resources>
+        <helpers:IconPathConverter x:Key="IconConverter"/>
+    </UserControl.Resources>
+
     <Grid Classes="windowFlyIn">
 
-        <!-- Заглушка без вкладок -->
+        <!-- Splash Screen for Editor -->
         <Border Background="{DynamicResource BgSurface}"
                 BorderBrush="{DynamicResource BorderSubtle}"
                 BorderThickness="1" CornerRadius="12"
@@ -18,268 +23,378 @@
                     <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
                 </Transitions>
             </Border.Transitions>
-            <TextBlock Text="C I D E" HorizontalAlignment="Center" VerticalAlignment="Center"
-                       Foreground="#444455" FontSize="64" FontWeight="Black"
-                       LetterSpacing="20" Opacity="0.5"/>
-        </Border>
-
-        <!-- Редактор -->
-        <Grid IsVisible="{Binding IsEditorVisible}" RowDefinitions="Auto, 8, *">
-
-            <!-- Вкладки -->
-            <Border Grid.Row="0" Classes="glowOnHover glowOnFocus"
-                    Background="{DynamicResource BgSurface}"
-                    BorderBrush="{DynamicResource BorderSubtle}"
-                    BorderThickness="1" CornerRadius="8" ClipToBounds="True">
-                <ScrollViewer HorizontalScrollBarVisibility="Hidden"
-                              VerticalScrollBarVisibility="Disabled" AllowAutoHide="True">
-                    <ItemsControl ItemsSource="{Binding Tabs}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" Background="Transparent"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="{Binding BackgroundBrush}"
-                                        BorderBrush="{DynamicResource BorderSubtle}"
-                                        BorderThickness="1" CornerRadius="6" Margin="4,4,0,4">
-                                    <Button Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).ActivateTabCommand}"
-                                            CommandParameter="{Binding}"
-                                            Background="Transparent" BorderThickness="0"
-                                            Padding="12,6" CornerRadius="6">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <TextBlock Text="{Binding DisplayName}"
-                                                       VerticalAlignment="Center"
-                                                       Foreground="{DynamicResource FgPrimary}"
-                                                       FontSize="13"/>
-                                            <Button Content="✕"
-                                                    Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).CloseTabCommand}"
-                                                    CommandParameter="{Binding}"
-                                                    Classes="subtle"
-                                                    Foreground="{DynamicResource FgSecondary}"
-                                                    VerticalAlignment="Center"
-                                                    Padding="4,2" FontSize="10" CornerRadius="4"/>
-                                        </StackPanel>
-                                    </Button>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </Border>
-
-            <!-- Редактор + поиск + breadcrumbs -->
-            <Border Grid.Row="2" Classes="glowOnHover glowOnFocus"
-                    Background="{DynamicResource BgSurface}"
-                    BorderBrush="{DynamicResource BorderSubtle}"
-                    BorderThickness="1" CornerRadius="12" ClipToBounds="True">
-                <Grid RowDefinitions="Auto, Auto, *">
-
-                    <!-- Breadcrumbs -->
-                    <Border Grid.Row="0"
-                            Background="{DynamicResource BgSurface}"
-                            BorderBrush="{DynamicResource BorderSubtle}"
-                            BorderThickness="0,0,0,1"
-                            Padding="12,5">
-                        <TextBlock x:Name="BreadcrumbsText"
-                                   Text="{Binding Breadcrumbs}"
-                                   Foreground="{DynamicResource FgSecondary}"
-                                   FontSize="12"
-                                   TextTrimming="CharacterEllipsis"/>
-                    </Border>
-
-                    <!-- Панель поиска (скрыта по умолчанию) -->
-                    <Border Grid.Row="1"
-                            x:Name="SearchPanel"
-                            IsVisible="False"
-                            Background="{DynamicResource BgSurface}"
-                            BorderBrush="{DynamicResource BorderSubtle}"
-                            BorderThickness="0,0,0,1"
-                            Padding="10,6">
-                        <Grid ColumnDefinitions="*, Auto, Auto, Auto, Auto, Auto">
-
-                            <!-- Поиск -->
-                            <TextBox x:Name="SearchBox"
-                                     Grid.Column="0"
-                                     PlaceholderText="Найти"
-                                     FontSize="13"
-                                     Padding="8,4"
-                                     CornerRadius="4"
-                                     TextChanged="OnSearchTextChanged"/>
-
-                            <!-- Кнопки флагов -->
-                            <ToggleButton x:Name="MatchCaseBtn"
-                                          Grid.Column="1"
-                                          Content="Aa" ToolTip.Tip="С учётом регистра"
-                                          Margin="4,0,0,0" Padding="6,4" FontSize="11"
-                                          IsCheckedChanged="OnSearchOptionsChanged"/>
-                            <ToggleButton x:Name="WholeWordBtn"
-                                          Grid.Column="2"
-                                          Content="[W]" ToolTip.Tip="Целое слово"
-                                          Margin="2,0,0,0" Padding="6,4" FontSize="11"
-                                          IsCheckedChanged="OnSearchOptionsChanged"/>
-                            <ToggleButton x:Name="RegexBtn"
-                                          Grid.Column="3"
-                                          Content=".*" ToolTip.Tip="Регулярное выражение"
-                                          Margin="2,0,4,0" Padding="6,4" FontSize="11"
-                                          IsCheckedChanged="OnSearchOptionsChanged"/>
-
-                            <!-- Навигация -->
-                            <Button Grid.Column="4" Content="↑"
-                                    ToolTip.Tip="Предыдущее (Shift+Enter)"
-                                    Padding="8,4" FontSize="13" Margin="0,0,2,0"
-                                    Click="OnSearchPrev"/>
-                            <Button Grid.Column="5" Content="↓"
-                                    ToolTip.Tip="Следующее (Enter)"
-                                    Padding="8,4" FontSize="13"
-                                    Click="OnSearchNext"/>
-                        </Grid>
-                    </Border>
-
-                    <!-- Панель замены (скрыта по умолчанию) -->
-                    <Border Grid.Row="1"
-                            x:Name="ReplacePanel"
-                            IsVisible="False"
-                            Background="{DynamicResource BgSurface}"
-                            BorderBrush="{DynamicResource BorderSubtle}"
-                            BorderThickness="0,0,0,1"
-                            Padding="10,4">
-                        <Grid RowDefinitions="Auto, Auto" RowSpacing="4">
-                            <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto, Auto, Auto, Auto">
-                                <TextBox x:Name="SearchBox2"
-                                         Grid.Column="0"
-                                         PlaceholderText="Найти"
-                                         FontSize="13" Padding="8,4" CornerRadius="4"
-                                         TextChanged="OnReplaceSearchChanged"/>
-                                <ToggleButton x:Name="MatchCase2Btn" Grid.Column="1"
-                                              Content="Aa" Margin="4,0,0,0" Padding="6,4" FontSize="11"
-                                              IsCheckedChanged="OnSearchOptionsChanged"/>
-                                <ToggleButton x:Name="WholeWord2Btn" Grid.Column="2"
-                                              Content="[W]" Margin="2,0,0,0" Padding="6,4" FontSize="11"
-                                              IsCheckedChanged="OnSearchOptionsChanged"/>
-                                <ToggleButton x:Name="Regex2Btn" Grid.Column="3"
-                                              Content=".*" Margin="2,0,4,0" Padding="6,4" FontSize="11"
-                                              IsCheckedChanged="OnSearchOptionsChanged"/>
-                                <Button Grid.Column="4" Content="↑" Padding="8,4" FontSize="13" Margin="0,0,2,0" Click="OnSearchPrev"/>
-                                <Button Grid.Column="5" Content="↓" Padding="8,4" FontSize="13" Click="OnSearchNext"/>
-                            </Grid>
-                            <Grid Grid.Row="1" ColumnDefinitions="*, Auto, Auto">
-                                <TextBox x:Name="ReplaceBox"
-                                         Grid.Column="0"
-                                         PlaceholderText="Заменить"
-                                         FontSize="13" Padding="8,4" CornerRadius="4"/>
-                                <Button Grid.Column="1" Content="Заменить"
-                                        Margin="4,0,2,0" Padding="8,4" FontSize="12"
-                                        Click="OnReplaceOne"/>
-                                <Button Grid.Column="2" Content="Заменить всё"
-                                        Padding="8,4" FontSize="12"
-                                        Click="OnReplaceAll"/>
-                            </Grid>
-                        </Grid>
-                    </Border>
-
-                    <!-- Sticky scroll + редактор + миникарта -->
-                    <Grid Grid.Row="2" ColumnDefinitions="*, Auto">
-
-                        <Grid Grid.Column="0" RowDefinitions="Auto, *">
-
-                            <!-- Sticky scroll строка -->
-                            <Border Grid.Row="0"
-                                    x:Name="StickyScrollBorder"
-                                    IsVisible="False"
-                                    Background="{DynamicResource BgSurface}"
-                                    BorderBrush="{DynamicResource BorderSubtle}"
-                                    BorderThickness="0,0,0,1"
-                                    Padding="48,3,8,3">
-                                <TextBlock x:Name="StickyScrollText"
-                                           FontFamily="Consolas, Courier New, monospace"
-                                           FontSize="13"
-                                           Foreground="{DynamicResource FgSecondary}"
-                                           TextTrimming="CharacterEllipsis"/>
-                            </Border>
-
-                            <!-- Бинарный файл -->
-                            <Border Grid.Row="1" Background="Transparent"
-                                    IsVisible="{Binding ActiveTab.IsBinary}">
-                                <StackPanel HorizontalAlignment="Center"
-                                            VerticalAlignment="Center" Spacing="15">
-                                    <TextBlock Text="📦" FontSize="64" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Этот файл является бинарным и не может быть отображён."
-                                               Foreground="{DynamicResource FgSecondary}"
-                                               FontSize="16" HorizontalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Основной редактор -->
-                            <Grid Grid.Row="1" Margin="8,8,0,8" IsVisible="{Binding ActiveTab.IsText}">
-                                <AvaloniaEdit:TextEditor
-                                        x:Name="CodeEditor"
-                                        Background="Transparent"
-                                        Foreground="{DynamicResource FgPrimary}"
-                                        FontFamily="Cascadia Code, Consolas, Courier New, monospace"
-                                        FontSize="15"
-                                        ShowLineNumbers="True"
-                                        WordWrap="False"
-                                        TextChanged="CodeEditor_TextChanged"
-                                        ScrollViewer.IsScrollInertiaEnabled="True"/>
-                                
-                                <Border x:Name="SmoothCaret" Width="2" Background="{DynamicResource AccentLight}" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" RenderTransform="translate(0px,0px)">
-                                    <Border.Transitions>
-                                        <Transitions>
-                                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.08" Easing="CubicEaseOut"/>
-                                        </Transitions>
-                                    </Border.Transitions>
-                                </Border>
-                            </Grid>
-                        </Grid>
-
-                        <!-- Миникарта -->
-                        <Border Grid.Column="1"
-                                Width="100"
-                                BorderBrush="{DynamicResource BorderSubtle}"
-                                BorderThickness="1,0,0,0">
-                            <Border.IsVisible>
-                                <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                    <Binding Path="ActiveTab.IsText" FallbackValue="False"/>
-                                    <Binding Path="Settings.ShowMinimap" FallbackValue="False"/>
-                                </MultiBinding>
-                            </Border.IsVisible>
-
-                            <Grid RowDefinitions="*">
-                                <AvaloniaEdit:TextEditor
-                                        x:Name="MinimapEditor"
-                                        Background="Transparent"
-                                        Foreground="{DynamicResource FgMuted}"
-                                        FontFamily="Consolas"
-                                        FontSize="3"
-                                        ShowLineNumbers="False"
-                                        WordWrap="False"
-                                        IsReadOnly="True"
-                                        IsHitTestVisible="False"
-                                        HorizontalScrollBarVisibility="Hidden"
-                                        VerticalScrollBarVisibility="Hidden"/>
-
-                                <!-- Viewport highlight overlay (Ползунок) -->
-                                <Border x:Name="MinimapViewport"
-                                        Background="#22FFFFFF"
-                                        BorderBrush="#33FFFFFF"
-                                        BorderThickness="1"
-                                        IsHitTestVisible="False"
-                                        VerticalAlignment="Top"
-                                        Height="40"/>
-
-                                <!-- НЕВИДИМОЕ СТЕКЛО ДЛЯ ЛОВЛИ МЫШИ -->
-                                <Border Background="Transparent"
-                                        PointerPressed="Minimap_PointerPressed"
-                                        PointerMoved="Minimap_PointerMoved"
-                                        PointerReleased="Minimap_PointerReleased"
-                                        PointerWheelChanged="Minimap_PointerWheelChanged"/>
-                            </Grid>
+            <Grid RowDefinitions="*, Auto" Margin="20">
+                <StackPanel Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="24">
+                    <Grid Width="96" Height="96" HorizontalAlignment="Center">
+                        <Image Source="avares://CIDE/Assets/cide_logo.png" Width="96" Height="96"/>
+                        <Border Background="#449C27B0" CornerRadius="48" Width="80" Height="80" Opacity="0.3" IsHitTestVisible="False">
+                            <Border.Effect>
+                                <BlurEffect Radius="30"/>
+                            </Border.Effect>
                         </Border>
                     </Grid>
-                </Grid>
-            </Border>
+
+                    <TextBlock Text="CIDE" HorizontalAlignment="Center"
+                               Foreground="{DynamicResource FgPrimary}" FontSize="32" FontWeight="Black"
+                               LetterSpacing="8" Opacity="0.8"/>
+
+                    <TextBlock Text="CIDE Editor" HorizontalAlignment="Center"
+                               Foreground="{DynamicResource FgSecondary}" FontSize="14" Opacity="0.6" Margin="0,-12,0,10"/>
+
+                    <Border Background="#05FFFFFF" BorderBrush="#10FFFFFF" BorderThickness="1" CornerRadius="10" Padding="20,15" Width="360">
+                        <StackPanel Spacing="10">
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Grid.Column="0" Text="Command Palette" Foreground="{DynamicResource FgSecondary}" FontSize="12" VerticalAlignment="Center"/>
+                                <Border Grid.Column="1" Background="#1AFFFFFF" CornerRadius="4" Padding="6,3">
+                                    <TextBlock Text="Ctrl + P" Foreground="{DynamicResource FgPrimary}" FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                            </Grid>
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Grid.Column="0" Text="Global Search" Foreground="{DynamicResource FgSecondary}" FontSize="12" VerticalAlignment="Center"/>
+                                <Border Grid.Column="1" Background="#1AFFFFFF" CornerRadius="4" Padding="6,3">
+                                    <TextBlock Text="Ctrl + Shift + F" Foreground="{DynamicResource FgPrimary}" FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                            </Grid>
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Grid.Column="0" Text="Run Build" Foreground="{DynamicResource FgSecondary}" FontSize="12" VerticalAlignment="Center"/>
+                                <Border Grid.Column="1" Background="#1AFFFFFF" CornerRadius="4" Padding="6,3">
+                                    <TextBlock Text="F5" Foreground="{DynamicResource FgPrimary}" FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                            </Grid>
+                            <Grid ColumnDefinitions="*, Auto">
+                                <TextBlock Grid.Column="0" Text="Settings" Foreground="{DynamicResource FgSecondary}" FontSize="12" VerticalAlignment="Center"/>
+                                <Border Grid.Column="1" Background="#1AFFFFFF" CornerRadius="4" Padding="6,3">
+                                    <TextBlock Text="Ctrl + ," Foreground="{DynamicResource FgPrimary}" FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16" Margin="0,0,0,20">
+                    <Button Classes="ghost" Content="Open Folder" Command="{Binding OpenFolderCommand}" FontSize="12" Padding="16,8"/>
+                    <Button Classes="accent" Content="Create Project" Command="{Binding CreateCsharpProjectCommand}" FontSize="12" Padding="16,8"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Editor Grid -->
+        <Grid IsVisible="{Binding IsEditorVisible}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- LEFT COLUMN -->
+            <Grid Grid.Column="0" RowDefinitions="Auto, *">
+                
+                <!-- Left Tabs -->
+                <Border Grid.Row="0" Classes="glowOnHover glowOnFocus"
+                        Background="{DynamicResource BgSurface}"
+                        BorderBrush="{DynamicResource BorderSubtle}"
+                        BorderThickness="1" CornerRadius="8" ClipToBounds="True" Margin="0,0,0,8">
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden"
+                                  VerticalScrollBarVisibility="Disabled" AllowAutoHide="True">
+                        <ItemsControl x:Name="LeftTabItemsControl" ItemsSource="{Binding LeftTabs}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Background="Transparent"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{Binding BackgroundBrush}"
+                                            BorderBrush="{DynamicResource BorderSubtle}"
+                                            BorderThickness="1" CornerRadius="6" Margin="4,4,0,4">
+                                        <Button Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).ActivateTabCommand}"
+                                                CommandParameter="{Binding}"
+                                                Background="Transparent" BorderThickness="0"
+                                                Padding="12,6" CornerRadius="6">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <Image Source="{Binding IconPath, Converter={StaticResource IconConverter}}"
+                                                       Width="14" Height="14" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           Classes.deleted="{Binding IsDeleted}"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource FgPrimary}"
+                                                           FontSize="13">
+                                                    <TextBlock.Styles>
+                                                        <Style Selector="TextBlock.deleted">
+                                                            <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                            <Setter Property="Foreground" Value="IndianRed"/>
+                                                        </Style>
+                                                    </TextBlock.Styles>
+                                                </TextBlock>
+                                                
+                                                <Button Content="&#x25EB;"
+                                                        Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).MoveTabToOtherGroupCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Classes="subtle"
+                                                        Foreground="{DynamicResource FgSecondary}"
+                                                        VerticalAlignment="Center"
+                                                        Padding="4,2" FontSize="10" CornerRadius="4"
+                                                        ToolTip.Tip="Move to other side"/>
+                                                <Button Content="&#x2715;"
+                                                        Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).CloseTabCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Classes="subtle"
+                                                        Foreground="{DynamicResource FgSecondary}"
+                                                        VerticalAlignment="Center"
+                                                        Padding="4,2" FontSize="10" CornerRadius="4"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Left Editor area -->
+                <Border Grid.Row="1" Classes="glowOnHover glowOnFocus"
+                        Background="{DynamicResource BgSurface}"
+                        BorderBrush="{DynamicResource BorderSubtle}"
+                        BorderThickness="1" CornerRadius="12" ClipToBounds="True">
+                    <Grid RowDefinitions="Auto, Auto, *">
+                        <!-- Breadcrumbs -->
+                        <Border Grid.Row="0"
+                                Background="{DynamicResource BgSurface}"
+                                BorderBrush="{DynamicResource BorderSubtle}"
+                                BorderThickness="0,0,0,1"
+                                Padding="12,5">
+                            <TextBlock Text="{Binding ActiveLeftTab.FilePath}"
+                                       Foreground="{DynamicResource FgSecondary}"
+                                       FontSize="12"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </Border>
+
+                        <!-- LEFT SEARCH PANEL -->
+                        <Border Grid.Row="1" x:Name="LeftSearchPanel" IsVisible="False" Background="{DynamicResource BgSurface}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="10,6">
+                            <Grid ColumnDefinitions="*, Auto, Auto, Auto, Auto, Auto">
+                                <TextBox x:Name="LeftSearchBox" Grid.Column="0" Watermark="Find" FontSize="13" Padding="8,4" CornerRadius="4" TextChanged="OnSearchTextChanged"/>
+                                <ToggleButton x:Name="LeftMatchCaseBtn" Grid.Column="1" Content="Aa" Margin="4,0,0,0" Padding="6,4" FontSize="11" IsCheckedChanged="OnSearchOptionsChanged"/>
+                                <ToggleButton x:Name="LeftWholeWordBtn" Grid.Column="2" Content="[W]" Margin="2,0,0,0" Padding="6,4" FontSize="11" IsCheckedChanged="OnSearchOptionsChanged"/>
+                                <ToggleButton x:Name="LeftRegexBtn" Grid.Column="3" Content=".*" Margin="2,0,4,0" Padding="6,4" FontSize="11" IsCheckedChanged="OnSearchOptionsChanged"/>
+                                <Button Grid.Column="4" Content="^" Padding="8,4" FontSize="13" Margin="0,0,2,0" Click="OnSearchPrev"/>
+                                <Button Grid.Column="5" Content="v" Padding="8,4" FontSize="13" Click="OnSearchNext"/>
+                            </Grid>
+                        </Border>
+                        <!-- LEFT REPLACE PANEL -->
+                        <Border Grid.Row="1" x:Name="LeftReplacePanel" IsVisible="False" Background="{DynamicResource BgSurface}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="10,4">
+                            <Grid RowDefinitions="Auto, Auto" RowSpacing="4">
+                                <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto, Auto, Auto, Auto">
+                                    <TextBox x:Name="LeftSearchBox2" Grid.Column="0" Watermark="Find" FontSize="13" Padding="8,4" CornerRadius="4" TextChanged="OnReplaceSearchChanged"/>
+                                    <ToggleButton x:Name="LeftMatchCase2Btn" Grid.Column="1" Content="Aa" Margin="4,0,0,0" Padding="6,4" FontSize="11" IsCheckedChanged="OnSearchOptionsChanged"/>
+                                    <ToggleButton x:Name="LeftWholeWord2Btn" Grid.Column="2" Content="[W]" Margin="2,0,0,0" Padding="6,4" FontSize="11" IsCheckedChanged="OnSearchOptionsChanged"/>
+                                    <ToggleButton x:Name="LeftRegex2Btn" Grid.Column="3" Content=".*" Margin="2,0,4,0" Padding="6,4" FontSize="11" IsCheckedChanged="OnSearchOptionsChanged"/>
+                                    <Button Grid.Column="4" Content="^" Padding="8,4" FontSize="13" Margin="0,0,2,0" Click="OnSearchPrev"/>
+                                    <Button Grid.Column="5" Content="v" Padding="8,4" FontSize="13" Click="OnSearchNext"/>
+                                </Grid>
+                                <Grid Grid.Row="1" ColumnDefinitions="*, Auto, Auto">
+                                    <TextBox x:Name="LeftReplaceBox" Grid.Column="0" Watermark="Replace" FontSize="13" Padding="8,4" CornerRadius="4"/>
+                                    <Button Grid.Column="1" Content="Replace" Margin="4,0,2,0" Padding="8,4" FontSize="12" Click="OnReplaceOne"/>
+                                    <Button Grid.Column="2" Content="Replace All" Padding="8,4" FontSize="12" Click="OnReplaceAll"/>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <Grid Grid.Row="2" ColumnDefinitions="*, Auto">
+                            <Grid Grid.Column="0" RowDefinitions="Auto, *">
+                                <!-- Sticky scroll -->
+                                <Border Grid.Row="0" x:Name="LeftStickyScrollBorder" IsVisible="False" Background="{DynamicResource BgSurface}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="48,3,8,3">
+                                    <TextBlock x:Name="LeftStickyScrollText" FontFamily="Consolas, Courier New, monospace" FontSize="13" Foreground="{DynamicResource FgSecondary}" TextTrimming="CharacterEllipsis"/>
+                                </Border>
+                                <!-- Бинарный Placeholder -->
+                                <Border Grid.Row="1" Background="Transparent" IsVisible="{Binding ActiveLeftTab.IsBinary}">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="15">
+                                        <Image Width="64" Height="64" Source="avares://CIDE/Assets/Icons/binary.png" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="Бинарный файл" Foreground="{DynamicResource FgSecondary}" FontSize="16" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                                <!-- Редактор -->
+                                <Grid Grid.Row="1" Margin="8,8,0,8" IsVisible="{Binding ActiveLeftTab.IsText}">
+                                    <Canvas x:Name="LeftCaretLayer" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsHitTestVisible="False">
+                                        <Border x:Name="LeftSmoothCaret" Width="2" Background="{DynamicResource AccentLight}" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" RenderTransform="translate(0px,0px)"/>
+                                    </Canvas>
+                                    <AvaloniaEdit:TextEditor x:Name="LeftCodeEditor" Background="Transparent" Foreground="{DynamicResource FgPrimary}" FontFamily="Cascadia Code, Consolas, Courier New, monospace" FontSize="15" ShowLineNumbers="True" WordWrap="False" TextChanged="CodeEditor_TextChanged" ScrollViewer.IsScrollInertiaEnabled="True" ScrollViewer.AllowAutoHide="False"/>
+                                </Grid>
+                            </Grid>
+                            <!-- Minimap -->
+                            <Border Grid.Column="1" Width="100" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1,0,0,0">
+                                <Border.IsVisible>
+                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                        <Binding Path="ActiveLeftTab.IsText" FallbackValue="False"/>
+                                        <Binding Path="Settings.ShowMinimap" FallbackValue="False"/>
+                                    </MultiBinding>
+                                </Border.IsVisible>
+                                <Grid>
+                                    <AvaloniaEdit:TextEditor x:Name="LeftMinimapEditor" Background="Transparent" Foreground="{DynamicResource FgMuted}" FontFamily="Consolas" FontSize="3" ShowLineNumbers="False" WordWrap="False" IsReadOnly="True" IsHitTestVisible="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+                                    <Border x:Name="LeftMinimapViewport" Background="#22FFFFFF" BorderBrush="#33FFFFFF" BorderThickness="1" IsHitTestVisible="False" VerticalAlignment="Top" Height="40"/>
+                                    <Border Background="Transparent" PointerPressed="Minimap_PointerPressed" PointerMoved="Minimap_PointerMoved" PointerReleased="Minimap_PointerReleased" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- SPLITTER -->
+            <GridSplitter Grid.Column="1" Width="8" Background="Transparent" IsVisible="{Binding IsSplitView}" ResizeDirection="Columns" />
+
+            <!-- RIGHT COLUMN -->
+            <Grid Grid.Column="2" RowDefinitions="Auto, *" IsVisible="{Binding IsSplitView}">
+                
+                <!-- Right Tabs -->
+                <Border Grid.Row="0" Classes="glowOnHover glowOnFocus"
+                        Background="{DynamicResource BgSurface}"
+                        BorderBrush="{DynamicResource BorderSubtle}"
+                        BorderThickness="1" CornerRadius="8" ClipToBounds="True" Margin="0,0,0,8">
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden"
+                                  VerticalScrollBarVisibility="Disabled" AllowAutoHide="True">
+                        <ItemsControl x:Name="RightTabItemsControl" ItemsSource="{Binding RightTabs}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Background="Transparent"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{Binding BackgroundBrush}"
+                                            BorderBrush="{DynamicResource BorderSubtle}"
+                                            BorderThickness="1" CornerRadius="6" Margin="4,4,0,4">
+                                        <Button Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).ActivateTabCommand}"
+                                                CommandParameter="{Binding}"
+                                                Background="Transparent" BorderThickness="0"
+                                                Padding="12,6" CornerRadius="6">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <Image Source="{Binding IconPath, Converter={StaticResource IconConverter}}"
+                                                       Width="14" Height="14" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           Classes.deleted="{Binding IsDeleted}"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource FgPrimary}"
+                                                           FontSize="13">
+                                                    <TextBlock.Styles>
+                                                        <Style Selector="TextBlock.deleted">
+                                                            <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                            <Setter Property="Foreground" Value="IndianRed"/>
+                                                        </Style>
+                                                    </TextBlock.Styles>
+                                                </TextBlock>
+                                                
+                                                <Button Content="&#x25EB;"
+                                                        Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).MoveTabToOtherGroupCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Classes="subtle"
+                                                        Foreground="{DynamicResource FgSecondary}"
+                                                        VerticalAlignment="Center"
+                                                        Padding="4,2" FontSize="10" CornerRadius="4"
+                                                        ToolTip.Tip="Move to other side"/>
+                                                <Button Content="&#x2715;"
+                                                        Command="{Binding $parent[UserControl].((vm:MainPageModel)DataContext).CloseTabCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Classes="subtle"
+                                                        Foreground="{DynamicResource FgSecondary}"
+                                                        VerticalAlignment="Center"
+                                                        Padding="4,2" FontSize="10" CornerRadius="4"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Right Editor area -->
+                <Border Grid.Row="1" Classes="glowOnHover glowOnFocus"
+                        Background="{DynamicResource BgSurface}"
+                        BorderBrush="{DynamicResource BorderSubtle}"
+                        BorderThickness="1" CornerRadius="12" ClipToBounds="True">
+                    <Grid RowDefinitions="Auto, Auto, *">
+                        <!-- Breadcrumbs -->
+                        <Border Grid.Row="0"
+                                Background="{DynamicResource BgSurface}"
+                                BorderBrush="{DynamicResource BorderSubtle}"
+                                BorderThickness="0,0,0,1"
+                                Padding="12,5">
+                            <TextBlock Text="{Binding ActiveRightTab.FilePath}"
+                                       Foreground="{DynamicResource FgSecondary}"
+                                       FontSize="12"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </Border>
+
+                        <!-- RIGHT SEARCH PANEL -->
+                        <Border Grid.Row="1" x:Name="RightSearchPanel" IsVisible="False" Background="{DynamicResource BgSurface}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="10,6">
+                            <Grid ColumnDefinitions="*, Auto, Auto, Auto, Auto, Auto">
+                                <TextBox x:Name="RightSearchBox" Grid.Column="0" Watermark="Find" FontSize="13" Padding="8,4" CornerRadius="4" TextChanged="OnSearchTextChanged"/>
+                                <ToggleButton x:Name="RightMatchCaseBtn" Grid.Column="1" Content="Aa" Margin="4,0,0,0" Padding="6,4" FontSize="11" IsCheckedChanged="OnSearchOptionsChanged"/>
+                                <ToggleButton x:Name="RightWholeWordBtn" Grid.Column="2" Content="[W]" Margin="2,0,0,0" Padding="6,4" FontSize="11" IsCheckedChanged="OnSearchOptionsChanged"/>
+                                <ToggleButton x:Name="RightRegexBtn" Grid.Column="3" Content=".*" Margin="2,0,4,0" Padding="6,4" FontSize="11" IsCheckedChanged="OnSearchOptionsChanged"/>
+                                <Button Grid.Column="4" Content="^" Padding="8,4" FontSize="13" Margin="0,0,2,0" Click="OnSearchPrev"/>
+                                <Button Grid.Column="5" Content="v" Padding="8,4" FontSize="13" Click="OnSearchNext"/>
+                            </Grid>
+                        </Border>
+                        <!-- RIGHT REPLACE PANEL -->
+                        <Border Grid.Row="1" x:Name="RightReplacePanel" IsVisible="False" Background="{DynamicResource BgSurface}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="10,4">
+                            <Grid RowDefinitions="Auto, Auto" RowSpacing="4">
+                                <Grid Grid.Row="0" ColumnDefinitions="*, Auto, Auto, Auto, Auto, Auto">
+                                    <TextBox x:Name="RightSearchBox2" Grid.Column="0" Watermark="Find" FontSize="13" Padding="8,4" CornerRadius="4" TextChanged="OnReplaceSearchChanged"/>
+                                    <ToggleButton x:Name="RightMatchCase2Btn" Grid.Column="1" Content="Aa" Margin="4,0,0,0" Padding="6,4" FontSize="11" IsCheckedChanged="OnSearchOptionsChanged"/>
+                                    <ToggleButton x:Name="RightWholeWord2Btn" Grid.Column="2" Content="[W]" Margin="2,0,0,0" Padding="6,4" FontSize="11" IsCheckedChanged="OnSearchOptionsChanged"/>
+                                    <ToggleButton x:Name="RightRegex2Btn" Grid.Column="3" Content=".*" Margin="2,0,4,0" Padding="6,4" FontSize="11" IsCheckedChanged="OnSearchOptionsChanged"/>
+                                    <Button Grid.Column="4" Content="^" Padding="8,4" FontSize="13" Margin="0,0,2,0" Click="OnSearchPrev"/>
+                                    <Button Grid.Column="5" Content="v" Padding="8,4" FontSize="13" Click="OnSearchNext"/>
+                                </Grid>
+                                <Grid Grid.Row="1" ColumnDefinitions="*, Auto, Auto">
+                                    <TextBox x:Name="RightReplaceBox" Grid.Column="0" Watermark="Replace" FontSize="13" Padding="8,4" CornerRadius="4"/>
+                                    <Button Grid.Column="1" Content="Replace" Margin="4,0,2,0" Padding="8,4" FontSize="12" Click="OnReplaceOne"/>
+                                    <Button Grid.Column="2" Content="Replace All" Padding="8,4" FontSize="12" Click="OnReplaceAll"/>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <Grid Grid.Row="2" ColumnDefinitions="*, Auto">
+                            <Grid Grid.Column="0" RowDefinitions="Auto, *">
+                                <!-- Sticky scroll -->
+                                <Border Grid.Row="0" x:Name="RightStickyScrollBorder" IsVisible="False" Background="{DynamicResource BgSurface}" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="48,3,8,3">
+                                    <TextBlock x:Name="RightStickyScrollText" FontFamily="Consolas, Courier New, monospace" FontSize="13" Foreground="{DynamicResource FgSecondary}" TextTrimming="CharacterEllipsis"/>
+                                </Border>
+                                <!-- Бинарный Placeholder -->
+                                <Border Grid.Row="1" Background="Transparent" IsVisible="{Binding ActiveRightTab.IsBinary}">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="15">
+                                        <Image Width="64" Height="64" Source="avares://CIDE/Assets/Icons/binary.png" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="Бинарный файл" Foreground="{DynamicResource FgSecondary}" FontSize="16" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                                <!-- Редактор -->
+                                <Grid Grid.Row="1" Margin="8,8,0,8" IsVisible="{Binding ActiveRightTab.IsText}">
+                                    <Canvas x:Name="RightCaretLayer" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsHitTestVisible="False">
+                                        <Border x:Name="RightSmoothCaret" Width="2" Background="{DynamicResource AccentLight}" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False" RenderTransform="translate(0px,0px)"/>
+                                    </Canvas>
+                                    <AvaloniaEdit:TextEditor x:Name="RightCodeEditor" Background="Transparent" Foreground="{DynamicResource FgPrimary}" FontFamily="Cascadia Code, Consolas, Courier New, monospace" FontSize="15" ShowLineNumbers="True" WordWrap="False" TextChanged="CodeEditor_TextChanged" ScrollViewer.IsScrollInertiaEnabled="True" ScrollViewer.AllowAutoHide="False"/>
+                                </Grid>
+                            </Grid>
+                            <!-- Minimap -->
+                            <Border Grid.Column="1" Width="100" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1,0,0,0">
+                                <Border.IsVisible>
+                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                        <Binding Path="ActiveRightTab.IsText" FallbackValue="False"/>
+                                        <Binding Path="Settings.ShowMinimap" FallbackValue="False"/>
+                                    </MultiBinding>
+                                </Border.IsVisible>
+                                <Grid>
+                                    <AvaloniaEdit:TextEditor x:Name="RightMinimapEditor" Background="Transparent" Foreground="{DynamicResource FgMuted}" FontFamily="Consolas" FontSize="3" ShowLineNumbers="False" WordWrap="False" IsReadOnly="True" IsHitTestVisible="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+                                    <Border x:Name="RightMinimapViewport" Background="#22FFFFFF" BorderBrush="#33FFFFFF" BorderThickness="1" IsHitTestVisible="False" VerticalAlignment="Top" Height="40"/>
+                                    <Border Background="Transparent" PointerPressed="Minimap_PointerPressed" PointerMoved="Minimap_PointerMoved" PointerReleased="Minimap_PointerReleased" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>
+

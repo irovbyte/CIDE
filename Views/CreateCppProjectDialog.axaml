@@ -1,12 +1,17 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:helpers="clr-namespace:CIDE.Helpers"
         x:Class="CIDE.Views.CreateCppProjectDialog"
         Title="Создать проект C/C++"
         Width="550" Height="450"
         WindowStartupLocation="CenterOwner"
         Background="Transparent"
-        WindowDecorations="None"
+        SystemDecorations="None"
         ShowInTaskbar="False">
+
+    <Window.Resources>
+        <helpers:IconPathConverter x:Key="IconConverter"/>
+    </Window.Resources>
 
     <Grid Classes="windowFlyIn">
         <!-- Main Glass Panel -->
@@ -53,7 +58,9 @@
                             <TextBlock Text="Расположение" Foreground="{DynamicResource FgSecondary}" FontSize="13"/>
                             <Grid ColumnDefinitions="*, Auto">
                                 <TextBox x:Name="ProjectPathTextBox" Grid.Column="0" Margin="0,0,5,0"/>
-                                <Button x:Name="BrowseButton" Grid.Column="1" Classes="subtle" Content="📂" Width="36" Height="36" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+                                <Button x:Name="BrowseButton" Grid.Column="1" Classes="subtle" Width="36" Height="36" Padding="8">
+                                    <Image Source="{Binding Source='avares://CIDE/Assets/Icons/folders/default.svg', Converter={StaticResource IconConverter}}" Width="16" Height="16"/>
+                                </Button>
                             </Grid>
                         </StackPanel>
                     </StackPanel>

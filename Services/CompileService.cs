@@ -1,11 +1,17 @@
+using System;
 using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
+using Renci.SshNet;
 
 namespace CIDE.Services;
 
 public static class CompileService
 {
     private static Process? t_currentProcess;
+    private static SshCommand? t_currentSshCommand;
 
     public static void KillCurrentProcess()
     {
@@ -15,85 +21,131 @@ public static class CompileService
             { t_currentProcess.Kill(true); }
             catch { }
         }
+        if (t_currentSshCommand != null)
+        {
+            try
+            { t_currentSshCommand.CancelAsync(); }
+            catch { }
+        }
     }
 
-    public static async Task RunCompilationAsync(string projectType, string activeFilePath, string workspacePath, Action<string> onOutput)
+    public static async Task RunCompilationAsync(BuildProfile? profile, Action<string> onOutput, string projectName = "")
     {
-        onOutput($"[{DateTime.Now:HH:mm:ss}] Запуск: {projectType}\n");
-
-        if (projectType == "Makefile")
+        if (profile == null)
         {
-            var makePath = Path.Combine(ToolchainService.MinGWDir, "bin", "mingw32-make.exe");
-            if (!File.Exists(makePath))
-            {
-                makePath = "mingw32-make.exe";
-            }
-
-            onOutput($"$ {makePath}\n");
-            var result = await ExecuteProcessAsync(makePath, "", workspacePath, onOutput);
-            if (result == 0)
-            {
-                onOutput($"\n[{DateTime.Now:HH:mm:ss}] Сборка завершена.\n");
-            }
+            onOutput("Ошибка: Профиль сборки не выбран.\n");
+            return;
         }
-        else if (projectType is "C Project" or "C++ Project" or "C File" or "C++ File")
+
+        onOutput($"[{DateTime.Now:HH:mm:ss}] Запуск: {profile.DisplayName}\n");
+
+        if (profile.Type is BuildProfileType.Makefile or BuildProfileType.SingleFileC or BuildProfileType.SingleFileCpp)
         {
-            var isCpp = projectType.Contains("C++");
-            var compiler = isCpp ? "g++.exe" : "gcc.exe";
-            var compilerPath = Path.Combine(ToolchainService.MinGWDir, "bin", compiler);
-            if (!File.Exists(compilerPath))
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                compilerPath = compiler;
+                await ExecuteSshCommandAsync(profile, onOutput, projectName);
+                return;
             }
-
-            var targetFiles = "";
-            var outputExe = OperatingSystem.IsWindows() ? "app.exe" : "app";
-            var workingDir = workspacePath;
-
-            if (projectType.Contains("Project") && !string.IsNullOrEmpty(workspacePath) && Directory.Exists(workspacePath))
-            {
-                var ext = isCpp ? "*.cpp" : "*.c";
-                var files = Directory.GetFiles(workspacePath, ext, SearchOption.AllDirectories);
-                if (files.Length == 0)
-                {
-                    onOutput($"Ошибка: Исходные файлы не найдены в {workspacePath}\n");
-                    return;
-                }
-                targetFiles = string.Join(" ", files.Select(f => $"\"{f}\""));
-                var binDir = Path.Combine(workspacePath, "bin");
-                if (!Directory.Exists(binDir))
-                {
-                    _ = Directory.CreateDirectory(binDir);
-                }
-
-                outputExe = Path.Combine(binDir, OperatingSystem.IsWindows() ? "app.exe" : "app");
-            }
-            else
-            {
-                if (string.IsNullOrEmpty(activeFilePath) || (!activeFilePath.EndsWith(".c", StringComparison.OrdinalIgnoreCase) && !activeFilePath.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase)))
-                {
-                    onOutput("Ошибка: Откройте файл .c или .cpp для компиляции.\n");
-                    return;
-                }
-                targetFiles = $"\"{activeFilePath}\"";
-                workingDir = Path.GetDirectoryName(activeFilePath) ?? workspacePath;
-                outputExe = Path.Combine(workingDir, Path.GetFileNameWithoutExtension(activeFilePath) + (OperatingSystem.IsWindows() ? ".exe" : ""));
-            }
-
-            var args = $"-Wall -g {targetFiles} -o \"{outputExe}\"";
+            var compiler = profile.Type == BuildProfileType.SingleFileCpp ? "g++" : (profile.Type == BuildProfileType.Makefile ? "make" : "gcc");
+            var args = profile.Type == BuildProfileType.Makefile
+                ? $"-f \"{profile.TargetPath}\""
+                : $"-Wall -g \"{profile.TargetPath}\" -o \"{Path.Combine(profile.WorkingDirectory, Path.GetFileNameWithoutExtension(profile.TargetPath))}\"";
             onOutput($"$ {compiler} {args}\n");
-
-            var result = await ExecuteProcessAsync(compilerPath, args, workingDir, onOutput);
-            if (result == 0 && File.Exists(outputExe))
-            {
-                onOutput($"\n[{DateTime.Now:HH:mm:ss}] Успешно собрано. Запуск {Path.GetFileName(outputExe)}...\n");
-                _ = await ExecuteProcessAsync(outputExe, "", workingDir, onOutput);
-            }
+            _ = await ExecuteProcessAsync(compiler, args, profile.WorkingDirectory, onOutput);
+            return;
+        }
+        if (profile.Type == BuildProfileType.DotNetProject)
+        {
+            var args = $"run --project \"{profile.TargetPath}\"";
+            onOutput($"$ dotnet {args}\n");
+            _ = await ExecuteProcessAsync("dotnet", args, profile.WorkingDirectory, onOutput);
+        }
+        else if (profile.Type is BuildProfileType.Python)
+        {
+            var args = $"\"{profile.TargetPath}\"";
+            onOutput($"$ python {args}\n");
+            _ = await ExecuteProcessAsync("python", args, profile.WorkingDirectory, onOutput);
+        }
+        else if (profile.Type is BuildProfileType.Bash)
+        {
+            var args = $"\"{profile.TargetPath}\"";
+            onOutput($"$ bash {args}\n");
+            _ = await ExecuteProcessAsync("bash", args, profile.WorkingDirectory, onOutput);
         }
         else
         {
-            onOutput($"Тип '{projectType}' не поддерживается для авто-сборки. Используйте терминал.\n");
+            onOutput($"Тип '{profile.Type}' не поддерживается для авто-сборки. Используйте терминал.\n");
         }
+    }
+
+    private static async Task ExecuteSshCommandAsync(BuildProfile profile, Action<string> onOutput, string projectName)
+    {
+        if (string.IsNullOrEmpty(projectName))
+        {
+            projectName = "default";
+        }
+
+        var remoteDir = $"/home/cide/shadow/{projectName}";
+        var fileName = Path.GetFileName(profile.TargetPath);
+        string command;
+        if (profile.Type == BuildProfileType.Makefile)
+        {
+            command = $"cd {remoteDir} && make -f {fileName}";
+        }
+        else
+        {
+            var compiler = profile.Type == BuildProfileType.SingleFileCpp ? "g++" : "gcc";
+            var outName = Path.GetFileNameWithoutExtension(fileName);
+            command = $"cd {remoteDir} && {compiler} -Wall -g {fileName} -o {outName} && ./{outName}";
+        }
+
+        onOutput($"[CIDEL Engine] $ {command}\n");
+
+        await Task.Run(() =>
+        {
+            try
+            {
+                var conn = CidelEngineService.Instance.LocalEngineConnection;
+                var method = new PasswordAuthenticationMethod(conn.Username, conn.Password);
+                var connectionInfo = new ConnectionInfo(conn.Host, conn.Port, conn.Username, method);
+                using var client = new SshClient(connectionInfo);
+                client.Connect();
+
+                t_currentSshCommand = client.CreateCommand(command);
+                var asyncResult = t_currentSshCommand.BeginExecute();
+
+                using var reader = new StreamReader(t_currentSshCommand.OutputStream);
+                using var errReader = new StreamReader(t_currentSshCommand.ExtendedOutputStream);
+                while (!asyncResult.IsCompleted)
+                {
+                    while (!reader.EndOfStream)
+                    {
+                        onOutput(reader.ReadLine() + "\n");
+                    }
+
+                    while (!errReader.EndOfStream)
+                    {
+                        onOutput(errReader.ReadLine() + "\n");
+                    }
+
+                    Thread.Sleep(50);
+                }
+                onOutput(reader.ReadToEnd());
+                onOutput(errReader.ReadToEnd());
+
+                _ = t_currentSshCommand.EndExecute(asyncResult);
+                onOutput($"\nПроцесс завершился с кодом {t_currentSshCommand.ExitStatus}.\n");
+                client.Disconnect();
+            }
+            catch (Exception ex)
+            {
+                onOutput($"\n❌ Ошибка SSH: {ex.Message}\nПроверьте, запущен ли CIDEL Engine.\n");
+            }
+            finally
+            {
+                t_currentSshCommand = null;
+            }
+        });
     }
 
     private static async Task<int> ExecuteProcessAsync(string fileName, string args, string workingDir, Action<string> onOutput)
@@ -132,7 +184,7 @@ public static class CompileService
         }
         catch (Exception ex)
         {
-            onOutput($"\nОшибка запуска процесса: {ex.Message}\n");
+            onOutput($"\n❌ Ошибка запуска процесса: {ex.Message}\n");
             t_currentProcess?.Dispose();
             t_currentProcess = null;
             return -1;

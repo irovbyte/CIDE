@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -11,33 +11,38 @@
 
     <ApplicationTitle>CIDE</ApplicationTitle>
     <ApplicationId>com.core.cide</ApplicationId>
+    <ApplicationIcon>Assets\cide_logo.ico</ApplicationIcon>
 
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Avalonia UI -->
-    <PackageReference Include="Avalonia" Version="12.0.3" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.0.3" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.3" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.3" />
-    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.16" />
-    
-    <!-- AvaloniaEdit -->
-    <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
-    <PackageReference Include="AvaloniaEdit.TextMate" Version="12.0.0" />
+    <!-- 1. Ядро Avalonia -->
+    <PackageReference Include="Avalonia" Version="11.3.14" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.14" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.14" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.14" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.14" />
 
-    <!-- MVVM and DI -->
+    <!-- 2. Иконки -->
+    <PackageReference Include="Avalonia.Svg.Skia" Version="11.3.0" />
+
+    <!-- 3. Редактор кода -->
+    <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.1.0" />
+    <PackageReference Include="AvaloniaEdit.TextMate" Version="11.1.0" />
+
+    <!-- 4. Наш капризный Терминал -->
+    <PackageReference Include="Iciclecreek.Avalonia.Terminal" Version="1.0.12" />
+
+    <!-- 5. Остальные библиотеки -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="Iciclecreek.Avalonia.Terminal" Version="2.0.3" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
-    
-    <!-- Utilities -->
     <PackageReference Include="SSH.NET" Version="2025.1.0" />
     <PackageReference Include="System.Text.Json" Version="10.0.8" />
-    <PackageReference Include="TextMateSharp.Grammars" Version="2.0.3" />
-    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.8" />
+
+    <!-- СТРОКА С TextMateSharp.Grammars УДАЛЕНА ПОЛНОСТЬЮ! -->
   </ItemGroup>
 
   <ItemGroup>
@@ -45,11 +50,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Assets\cide_logo.png" />
-  </ItemGroup>
-
-  <ItemGroup>
     <AvaloniaResource Include="Assets\**\*" />
   </ItemGroup>
-
+  
 </Project>
